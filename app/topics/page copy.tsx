@@ -9,7 +9,6 @@ type Topic = {
   title: string;
   created_by: string;
   created_at: string;
-  last_activity_at?: string; // ✅ 追加
 };
 
 export default function TopicsPage() {
@@ -45,9 +44,6 @@ export default function TopicsPage() {
     return id;
   };
 
-  // ✅ “更新日時” を返す（無い場合は created_at）
-  const activityTime = (t: Topic) => t.last_activity_at ?? t.created_at;
-
   // 初回：ログイン中ユーザーID取得 → トピック一覧取得
   useEffect(() => {
     (async () => {
@@ -63,14 +59,13 @@ export default function TopicsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ 一覧を「最新更新が上」にする
   async function fetchTopics() {
     setLoading(true);
 
     const { data, error } = await supabase
       .from("topics")
-      .select("id,title,created_by,created_at,last_activity_at")
-      .order("last_activity_at", { ascending: false });
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error(error);
@@ -79,36 +74,9 @@ export default function TopicsPage() {
       return;
     }
 
-    setTopics((data ?? []) as Topic[]);
+    setTopics(data ?? []);
     setLoading(false);
   }
-
-  // ✅ 画面復帰時にも最新に（詳細→戻る等）
-  useEffect(() => {
-    const onFocus = () => fetchTopics();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ✅ Realtimeで topics 変更が来たら更新（あると気持ちいい）
-  useEffect(() => {
-    const ch = supabase
-      .channel("topics-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "topics" },
-        () => {
-          fetchTopics();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(ch);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // 新規トピック作成
   async function createTopic() {
@@ -137,54 +105,23 @@ export default function TopicsPage() {
     fetchTopics();
   }
 
-  // ✅ HOT 判定：3日以内＆最新2件
-  const hotIds = useMemo(() => {
-    const now = Date.now();
-    const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
-
-    const sorted = [...topics].sort(
-      (a, b) =>
-        new Date(activityTime(b)).getTime() -
-        new Date(activityTime(a)).getTime()
-    );
-
-    const top2 = sorted.slice(0, 2);
-    const ids = new Set<string>();
-
-    top2.forEach((t) => {
-      const diff = now - new Date(activityTime(t)).getTime();
-      if (diff <= THREE_DAYS) ids.add(t.id);
-    });
-
-    return ids;
-  }, [topics]);
-
-  // 日付グループ化（✅ “更新日” 基準に変更）
+  // 日付グループ化関数
   const groupByDate = (items: Topic[]) => {
     const groups: { [date: string]: Topic[] } = {};
     items.forEach((topic) => {
-      const date = new Date(activityTime(topic))
+      const date = new Date(topic.created_at)
         .toISOString()
         .slice(0, 10)
         .replace(/-/g, ".");
       if (!groups[date]) groups[date] = [];
       groups[date].push(topic);
     });
-
-    // 各グループ内も更新降順に
-    Object.keys(groups).forEach((k) => {
-      groups[k].sort(
-        (a, b) =>
-          new Date(activityTime(b)).getTime() -
-          new Date(activityTime(a)).getTime()
-      );
-    });
-
     return groups;
   };
 
   const grouped = useMemo(() => groupByDate(topics), [topics]);
 
+  // --- 削除モーダルを開く ---
   function openDeleteModal(topic: Topic) {
     setDeleteTarget(topic);
     setDeletePassword("");
@@ -192,6 +129,7 @@ export default function TopicsPage() {
     setShowDeleteModal(true);
   }
 
+  // ✅ 編集モーダルを開く
   function openEditModal(topic: Topic) {
     setEditTarget(topic);
     setEditTitle(topic.title);
@@ -199,6 +137,7 @@ export default function TopicsPage() {
     setShowEditModal(true);
   }
 
+  // --- 削除処理（パス確認 → delete） ---
   async function confirmDelete() {
     if (!deleteTarget) return;
     if (!deletePassword) {
@@ -209,6 +148,7 @@ export default function TopicsPage() {
     setDeleteLoading(true);
     setDeleteError(null);
 
+    // 1) ログイン中ユーザー取得
     const {
       data: { user },
       error: userErr,
@@ -222,6 +162,7 @@ export default function TopicsPage() {
       return;
     }
 
+    // 2) パスワード確認（再ログイン）
     const { error: loginErr } = await supabase.auth.signInWithPassword({
       email: user.email,
       password: deletePassword,
@@ -233,6 +174,7 @@ export default function TopicsPage() {
       return;
     }
 
+    // 3) 削除（RLSで「作成者のみ」許可される想定）
     const { error: delErr } = await supabase
       .from("topics")
       .delete()
@@ -251,7 +193,7 @@ export default function TopicsPage() {
     fetchTopics();
   }
 
-  // ✅ 更新処理（タイトル変更→ topics が更新されるので last_activity_at も更新される）
+  // ✅ 更新処理（selectを付けて反映可否を確実に判定）
   async function confirmEdit() {
     if (!editTarget) return;
 
@@ -268,7 +210,7 @@ export default function TopicsPage() {
       .from("topics")
       .update({ title: nextTitle })
       .eq("id", editTarget.id)
-      .select("id,title,last_activity_at");
+      .select("id,title");
 
     setEditLoading(false);
 
@@ -285,16 +227,20 @@ export default function TopicsPage() {
       return;
     }
 
-    // ✅ いったん再取得（並び替えにも効く）
+    // 画面側も即反映
+    setTopics((prev) =>
+      prev.map((t) => (t.id === editTarget.id ? { ...t, title: nextTitle } : t))
+    );
+
     setShowEditModal(false);
     setEditTarget(null);
     setEditTitle("");
     setEditError(null);
-    fetchTopics();
   }
 
   return (
     <main style={{ padding: 20, background: "#666", minHeight: "100vh" }}>
+      {/* ヘッダー */}
       <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
         <div className="header-inner">
           <img
@@ -308,6 +254,7 @@ export default function TopicsPage() {
         </div>
       </header>
 
+      {/* 一覧 */}
       <div className="list-wrap">
         <div
           style={{
@@ -349,6 +296,7 @@ export default function TopicsPage() {
                     }}
                     onClick={() => router.push(`/topics/${topic.id}`)}
                   >
+                    {/* 左：アイコン + タイトル */}
                     <div
                       style={{
                         display: "flex",
@@ -367,37 +315,16 @@ export default function TopicsPage() {
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
                         }}
                       >
-                        <span>
-                          {topic.title}{" "}
-                          <span className={displayName(topic.created_by)}>
-                            {displayName(topic.created_by)}
-                          </span>
+                        {topic.title}{" "}
+                        <span className={displayName(topic.created_by)}>
+                          {displayName(topic.created_by)}
                         </span>
-
-                        {/* ✅ HOT */}
-                        {hotIds.has(topic.id) && (
-                          <span
-                            style={{
-                              background: "#ff3b30",
-                              color: "#fff",
-                              fontWeight: 800,
-                              fontSize: 11,
-                              padding: "2px 8px",
-                              borderRadius: 999,
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            HOT
-                          </span>
-                        )}
                       </div>
                     </div>
 
+                    {/* ✅ 自分の投稿だけ：編集 + 削除 */}
                     {myId === topic.created_by && (
                       <div
                         style={{
@@ -424,7 +351,12 @@ export default function TopicsPage() {
                           <img
                             src="/images/edit-icon.svg"
                             alt=""
-                            style={{ width: 16, height: 16, opacity: 0.9 }}
+                            style={{
+                              width: 16,
+                              height: 16,
+                              opacity: 0.9,
+                              filter: "invert(0)",
+                            }}
                           />
                         </button>
 
@@ -441,6 +373,7 @@ export default function TopicsPage() {
                             cursor: "pointer",
                             padding: 6,
                           }}
+                          aria-label="delete topic"
                           title="削除"
                         >
                           <img
@@ -522,7 +455,7 @@ export default function TopicsPage() {
         </div>
       )}
 
-      {/* 編集モーダル */}
+      {/* ✅ 編集モーダル */}
       {showEditModal && (
         <div
           style={{

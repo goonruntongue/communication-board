@@ -74,12 +74,30 @@ export default function TopicDetailPage() {
   const [dragOver, setDragOver] = useState(false);
 
   const displayName = (id: string) => {
-    if (id === "katsu") return "勝";
-    if (id === "kimi") return "竜";
+    if (id === "katsu") return "Fanio";
+    if (id === "kimi") return "Nantoka";
     return id;
   };
 
   const headerTitle = useMemo(() => topic?.title ?? "Data", [topic]);
+
+  // ✅ サクラ側アップロード直リンク（プレビュー用）
+  // 例: https://promiseasync.sakura.ne.jp/communication-board/uploads/<stored_name>
+  // ※ あなたの実際の公開フォルダ名に合わせてここだけ変えてOK
+  const SAKURA_UPLOAD_BASE =
+    "https://promiseasync.sakura.ne.jp/communication-board/uploads/";
+
+  // ✅ プレビューURLを作る（stored_name優先。無い場合は file_url をそのまま開く）
+  function getPreviewUrl(f: FileRow) {
+    if (f.stored_name)
+      return SAKURA_UPLOAD_BASE + encodeURIComponent(f.stored_name);
+    return f.file_url;
+  }
+
+  function openPreview(f: FileRow) {
+    const url = getPreviewUrl(f);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 
   useEffect(() => {
     init();
@@ -517,7 +535,9 @@ export default function TopicDetailPage() {
                       style={{ width: 24, height: 24 }}
                     />
                     <div style={{ fontSize: 14, fontWeight: 700 }}>
-                      {displayName(c.created_by)}
+                      <span className={displayName(c.created_by)}>
+                        {displayName(c.created_by)}
+                      </span>
                       <span
                         style={{
                           fontWeight: 400,
@@ -638,7 +658,7 @@ export default function TopicDetailPage() {
             </div>
           </section>
 
-          {/* RIGHT: files（あなたのまま） */}
+          {/* RIGHT: files */}
           <section className="right" style={{ display: "grid", gap: 14 }}>
             <div
               style={{ background: "#8a8a8a", borderRadius: 12, padding: 12 }}
@@ -654,9 +674,13 @@ export default function TopicDetailPage() {
                     textAlign: "center",
                     fontWeight: 700,
                     marginBottom: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 16,
                   }}
                 >
-                  DATA
+                  <span>DATA</span>
                 </div>
 
                 {files.length === 0 && (
@@ -669,30 +693,30 @@ export default function TopicDetailPage() {
                       key={f.id}
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
-                      <button
-                        onClick={() => downloadFile(f.file_url, f.file_name)}
+                      <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          textDecoration: "none",
-                          color: "#000",
                           flex: 1,
-                          border: "none",
-                          background: "transparent",
-                          padding: 0,
-                          cursor: "pointer",
-                          textAlign: "left",
+                          minWidth: 0,
                         }}
-                        title="ダウンロード"
                       >
                         <img
                           src="/images/folder.svg"
                           alt=""
                           style={{ width: 50, height: 50 }}
                         />
-                        <div style={{ display: "grid" }}>
-                          <div style={{ fontWeight: 700, fontSize: 13 }}>
+                        <div style={{ display: "grid", minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 13,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
                             {f.file_name}
                           </div>
                           <div style={{ fontSize: 12, opacity: 0.75 }}>
@@ -703,11 +727,19 @@ export default function TopicDetailPage() {
                               .replace(/-/g, ".")}
                           </div>
                         </div>
-                      </button>
+                      </div>
 
-                      {me?.shortId === f.created_by && (
+                      {/* ✅ 右側アイコン列：リンク / DL / ゴミ箱（自分のファイルだけ削除は表示） */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        {/* リンク（プレビュー） */}
                         <button
-                          onClick={() => deleteFile(f.id)}
+                          onClick={() => openPreview(f)}
                           style={{
                             width: 34,
                             height: 34,
@@ -715,17 +747,61 @@ export default function TopicDetailPage() {
                             border: "none",
                             background: "transparent",
                             cursor: "pointer",
-                            opacity: 0.85,
+                            opacity: 0.9,
                           }}
-                          title="削除"
+                          title="ブラウザで表示"
                         >
                           <img
-                            src="/images/trash-can.svg"
-                            alt="delete"
+                            src="/images/link-icon.svg"
+                            alt="open"
                             style={{ width: 18, height: 18 }}
                           />
                         </button>
-                      )}
+
+                        {/* ダウンロード */}
+                        <button
+                          onClick={() => downloadFile(f.file_url, f.file_name)}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 10,
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            opacity: 0.9,
+                          }}
+                          title="ダウンロード"
+                        >
+                          <img
+                            src="/images/dl-icon.svg"
+                            alt="download"
+                            style={{ width: 18, height: 18 }}
+                          />
+                        </button>
+
+                        {/* 削除（自分のファイルだけ） */}
+                        {me?.shortId === f.created_by && (
+                          <button
+                            onClick={() => deleteFile(f.id)}
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 10,
+                              border: "none",
+                              background: "transparent",
+                              cursor: "pointer",
+                              opacity: 0.85,
+                            }}
+                            title="削除"
+                          >
+                            <img
+                              src="/images/trash-can.svg"
+                              alt="delete"
+                              style={{ width: 18, height: 18 }}
+                            />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -931,8 +1007,8 @@ export default function TopicDetailPage() {
                 style={{ height: 40, padding: "0 10px" }}
               />
               <div style={{ fontSize: 12, opacity: 0.75 }}>
-                ※ URL追加のリンク先が download.php
-                ではない場合、ダウンロード時に失敗します。
+                ※ URL追加のリンク先が download.php ではない場合、
+                ダウンロード時に失敗します。
               </div>
             </div>
 
