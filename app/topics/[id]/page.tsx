@@ -65,6 +65,13 @@ export default function TopicDetailPage() {
   const [newFileUrl, setNewFileUrl] = useState("");
   const [fileBusy, setFileBusy] = useState(false);
 
+  // ✅ ファイル名編集モーダル（新規）
+  const [showEditFileModal, setShowEditFileModal] = useState(false);
+  const [editTargetFile, setEditTargetFile] = useState<FileRow | null>(null);
+  const [editFileName, setEditFileName] = useState("");
+  const [editFileError, setEditFileError] = useState<string | null>(null);
+  const [editFileLoading, setEditFileLoading] = useState(false);
+
   const listRef = useRef<HTMLDivElement | null>(null);
 
   // file picker
@@ -83,7 +90,6 @@ export default function TopicDetailPage() {
 
   // ✅ サクラ側アップロード直リンク（プレビュー用）
   // 例: https://promiseasync.sakura.ne.jp/communication-board/uploads/<stored_name>
-  // ※ あなたの実際の公開フォルダ名に合わせてここだけ変えてOK
   const SAKURA_UPLOAD_BASE =
     "https://promiseasync.sakura.ne.jp/communication-board/uploads/";
 
@@ -97,6 +103,66 @@ export default function TopicDetailPage() {
   function openPreview(f: FileRow) {
     const url = getPreviewUrl(f);
     window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  // ✅ URL追加かどうか判定（stored_nameが空ならURL追加扱い）
+  function isUrlAdded(f: FileRow) {
+    return !f.stored_name || !String(f.stored_name).trim();
+  }
+
+  // ✅ ファイル名編集モーダルを開く（新規）
+  function openEditFileModal(f: FileRow) {
+    setEditTargetFile(f);
+    setEditFileName(f.file_name ?? "");
+    setEditFileError(null);
+    setShowEditFileModal(true);
+  }
+
+  // ✅ ファイル名更新（新規）
+  async function confirmEditFileName() {
+    if (!editTargetFile) return;
+
+    const nextName = editFileName.trim();
+    if (!nextName) {
+      setEditFileError("タイトルを入力してください");
+      return;
+    }
+
+    setEditFileLoading(true);
+    setEditFileError(null);
+
+    const { data, error } = await supabase
+      .from("topic_files")
+      .update({ file_name: nextName })
+      .eq("id", editTargetFile.id)
+      .select("id,file_name");
+
+    setEditFileLoading(false);
+
+    if (error) {
+      console.error(error);
+      setEditFileError("更新できませんでした: " + error.message);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setEditFileError(
+        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。"
+      );
+      return;
+    }
+
+    // ✅ 画面即反映
+    setFiles((prev) =>
+      prev.map((x) =>
+        x.id === editTargetFile.id ? { ...x, file_name: nextName } : x
+      )
+    );
+
+    setShowEditFileModal(false);
+    setEditTargetFile(null);
+    setEditFileName("");
+    setEditFileError(null);
   }
 
   useEffect(() => {
@@ -293,14 +359,31 @@ export default function TopicDetailPage() {
   }
 
   async function deleteFile(fileId: string) {
-    const ok = confirm(
-      "このファイルを削除しますか？（サーバー上の実ファイルも消えます）"
-    );
-    if (!ok) return;
-
     const target = files.find((f) => f.id === fileId);
     if (!target) return;
 
+    const ok = confirm(
+      isUrlAdded(target)
+        ? "このリンクを削除しますか？"
+        : "このファイルを削除しますか？（サーバー上の実ファイルも消えます）"
+    );
+    if (!ok) return;
+
+    // ✅ URL追加（stored_nameなし）→ Supabaseの行だけ削除
+    if (isUrlAdded(target)) {
+      const { error } = await supabase
+        .from("topic_files")
+        .delete()
+        .eq("id", fileId);
+      if (error) {
+        alert("Supabase側の削除に失敗: " + error.message);
+        return;
+      }
+      fetchFiles();
+      return;
+    }
+
+    // ✅ アップロード（stored_nameあり）→ サーバー実ファイル削除 → Supabase削除
     const res = await fetch("/api/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -317,7 +400,6 @@ export default function TopicDetailPage() {
       .from("topic_files")
       .delete()
       .eq("id", fileId);
-
     if (error) {
       alert("Supabase側の削除に失敗: " + error.message);
       return;
@@ -702,14 +784,19 @@ export default function TopicDetailPage() {
                       key={f.id}
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
+                      {/* ✅ ファイル名クリックでプレビュー（あなたの要件どおり） */}
                       <div
+                        className="fileTitle"
+                        onClick={() => openPreview(f)}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
                           flex: 1,
                           minWidth: 0,
+                          cursor: "pointer",
                         }}
+                        title="クリックでブラウザ表示"
                       >
                         <img
                           src="/images/folder.svg"
@@ -738,7 +825,7 @@ export default function TopicDetailPage() {
                         </div>
                       </div>
 
-                      {/* ✅ 右側アイコン列：リンク / DL / ゴミ箱（自分のファイルだけ削除は表示） */}
+                      {/* ✅ 右側アイコン列：編集（edit-w） / DL（アップロードのみ） / ゴミ箱（自分のだけ） */}
                       <div
                         style={{
                           display: "flex",
@@ -746,52 +833,65 @@ export default function TopicDetailPage() {
                           gap: 8,
                         }}
                       >
-                        {/* リンク（プレビュー） */}
-                        <button
-                          onClick={() => openPreview(f)}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            opacity: 0.9,
-                          }}
-                          title="ブラウザで表示"
-                        >
-                          <img
-                            src="/images/link-icon.svg"
-                            alt="open"
-                            style={{ width: 18, height: 18 }}
-                          />
-                        </button>
-
-                        {/* ダウンロード */}
-                        <button
-                          onClick={() => downloadFile(f.file_url, f.file_name)}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            opacity: 0.9,
-                          }}
-                          title="ダウンロード"
-                        >
-                          <img
-                            src="/images/dl-icon.svg"
-                            alt="download"
-                            style={{ width: 18, height: 18 }}
-                          />
-                        </button>
-
-                        {/* 削除（自分のファイルだけ） */}
+                        {/* ✅ 編集（自分のだけ表示） */}
                         {me?.shortId === f.created_by && (
                           <button
-                            onClick={() => deleteFile(f.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditFileModal(f);
+                            }}
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 10,
+                              border: "none",
+                              background: "transparent",
+                              cursor: "pointer",
+                              opacity: 0.95,
+                            }}
+                            title="タイトルを編集"
+                          >
+                            <img
+                              src="/images/edit-w.svg"
+                              alt="edit"
+                              style={{ width: 18, height: 18 }}
+                            />
+                          </button>
+                        )}
+
+                        {/* ✅ ダウンロード（アップロードしたものだけ表示：URL追加は非表示） */}
+                        {!isUrlAdded(f) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadFile(f.file_url, f.file_name);
+                            }}
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 10,
+                              border: "none",
+                              background: "transparent",
+                              cursor: "pointer",
+                              opacity: 0.9,
+                            }}
+                            title="ダウンロード"
+                          >
+                            <img
+                              src="/images/dl-icon.svg"
+                              alt="download"
+                              style={{ width: 18, height: 18 }}
+                            />
+                          </button>
+                        )}
+
+                        {/* ✅ 削除（自分のファイルだけ） */}
+                        {me?.shortId === f.created_by && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteFile(f.id);
+                            }}
                             style={{
                               width: 34,
                               height: 34,
@@ -972,6 +1072,87 @@ export default function TopicDetailPage() {
                 }}
               >
                 {editLoading ? "..." : "更新"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ ファイル名編集モーダル（新規） */}
+      {showEditFileModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 10,
+          }}
+          onClick={() => {
+            if (!editFileLoading) setShowEditFileModal(false);
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 16,
+              width: 360,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, marginBottom: 12 }}>タイトルを編集</h3>
+
+            <input
+              value={editFileName}
+              onChange={(e) => setEditFileName(e.target.value)}
+              style={{
+                width: "100%",
+                height: 42,
+                borderRadius: 8,
+                border: "1px solid #ddd",
+                padding: "0 10px",
+                fontSize: 14,
+              }}
+              disabled={editFileLoading}
+              placeholder="例: Google"
+            />
+
+            {editFileError && (
+              <div style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
+                {editFileError}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 14,
+              }}
+            >
+              <button
+                onClick={() => setShowEditFileModal(false)}
+                disabled={editFileLoading}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={confirmEditFileName}
+                disabled={editFileLoading}
+                style={{
+                  background: "#000",
+                  color: "#fff",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  opacity: editFileLoading ? 0.7 : 1,
+                }}
+              >
+                {editFileLoading ? "..." : "更新"}
               </button>
             </div>
           </div>
