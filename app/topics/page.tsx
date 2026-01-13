@@ -160,13 +160,27 @@ export default function TopicsPage() {
   }, [topics]);
 
   // 日付グループ化（✅ “更新日” 基準に変更）
+  // ✅ JST基準で YYYY.MM.DD を作る
+  const formatDateJST = (iso: string) => {
+    const d = new Date(iso);
+    const y = d.toLocaleDateString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+    });
+    const m = d.toLocaleDateString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      month: "2-digit",
+    });
+    const day = d.toLocaleDateString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      day: "2-digit",
+    });
+    return `${y}.${m}.${day}`;
+  };
   const groupByDate = (items: Topic[]) => {
     const groups: { [date: string]: Topic[] } = {};
     items.forEach((topic) => {
-      const date = new Date(activityTime(topic))
-        .toISOString()
-        .slice(0, 10)
-        .replace(/-/g, ".");
+      const date = formatDateJST(activityTime(topic));
       if (!groups[date]) groups[date] = [];
       groups[date].push(topic);
     });
