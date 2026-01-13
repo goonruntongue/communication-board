@@ -508,8 +508,6 @@ export default function TopicDetailPage() {
                 padding: 10,
                 height: 260,
                 overflow: "auto",
-                display: "flex",
-                flexDirection: "column-reverse",
               }}
             >
               {comments.length === 0 && (
