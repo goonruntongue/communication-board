@@ -14,7 +14,7 @@
     border: 8px solid #333;
     background: #fff !important;
     max-width: 100%;
-    min-width: 600px;
+    min-width: 500px;
 }
 
 .list-wrap>div>div>div:first-of-type {
