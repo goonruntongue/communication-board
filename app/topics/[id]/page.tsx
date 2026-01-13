@@ -837,7 +837,7 @@ export default function TopicDetailPage() {
                       opacity: fileBusy ? 0.7 : 1,
                     }}
                   >
-                    URLで追加
+                    URLを追加
                   </button>
                 </div>
               </div>
