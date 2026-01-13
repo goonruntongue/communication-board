@@ -74,7 +74,7 @@ export default function LoginPage() {
             value={id}
             onChange={(e) => setId(e.target.value)}
             autoComplete="username"
-            placeholder="emailかID名"
+            placeholder="ID名"
             style={{
               width: "100%",
               height: 44,
