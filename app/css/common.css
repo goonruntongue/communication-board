@@ -172,3 +172,18 @@ body {
     background: green;
     color: #fff;
 }
+
+.fileTitle {
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.fileTitle:hover {
+    transform: scale(1.2);
+}
+
+.goto-topic {
+    border-bottom: 1px solid #888;
+    margin: 0 !important;
+    padding: 1em;
+}
