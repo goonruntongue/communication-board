@@ -508,6 +508,8 @@ export default function TopicDetailPage() {
                 padding: 10,
                 height: 260,
                 overflow: "auto",
+                display: "flex",
+                flexDirection: "column-reverse",
               }}
             >
               {comments.length === 0 && (
@@ -538,6 +540,7 @@ export default function TopicDetailPage() {
                       <span className={displayName(c.created_by)}>
                         {displayName(c.created_by)}
                       </span>
+
                       <span
                         style={{
                           fontWeight: 400,
@@ -545,10 +548,18 @@ export default function TopicDetailPage() {
                           fontSize: 12,
                         }}
                       >
-                        {new Date(c.created_at)
-                          .toISOString()
-                          .slice(0, 10)
-                          .replace(/-/g, ".")}
+                        {(() => {
+                          const d = new Date(c.created_at);
+                          const date = d
+                            .toLocaleDateString("ja-JP")
+                            .replace(/\//g, ".");
+                          const time = d.toLocaleTimeString("ja-JP", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          });
+                          return `${date} ${time}`;
+                        })()}
                       </span>
                     </div>
 
