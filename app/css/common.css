@@ -1,0 +1,122 @@
+.list-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1em;
+}
+
+.list-wrap>div {
+    flex: 1;
+    border: 8px solid #333;
+    background: #fff !important;
+}
+
+.list-wrap>div>div>div:first-of-type {
+    background: yellow !important;
+    font-weight: bold;
+}
+
+.list-wrap>div img:not(.door) {
+    filter: invert(1);
+}
+
+header {
+    padding: 1em 0;
+}
+
+header img {
+    margin: 0.25em auto;
+}
+
+main {
+    padding: 0 !important;
+    background: linear-gradient(to bottom, #3c2387, #3b1051) !important;
+    background: #fff !important;
+}
+
+main.login-page-main {
+    background: #fff !important;
+    padding-top: 2.5em !important;
+}
+
+.list-wrap {
+    margin: 1em auto;
+    width: min(1024px, 96%);
+}
+
+header {
+    background: #111;
+}
+
+.first-letter {
+    color: yellow;
+}
+
+.goto-topic:hover {
+    font-weight: bold;
+}
+
+.header-title-pill div:first-letter {
+    color: #ff0;
+}
+
+.header-title-pill div {
+    background: rgb(21, 21, 21) !important;
+    font-weight: bold;
+    color: #fff;
+}
+
+.board {
+    background: #fff !important;
+}
+
+.board img[alt="delete"] {
+    filter: invert(1);
+    transition: 1s;
+}
+
+.board img[alt="delete"]:hover {
+    filter: invert(0.6);
+    filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(500%) hue-rotate(5deg);
+}
+
+img[alt="send"]:hover {
+    filter: invert(1);
+    transition: 1s;
+}
+
+img[alt="send"] {
+    filter: invert(0.6);
+    filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(500%) hue-rotate(5deg);
+}
+
+section.left,
+section.right>div:first-of-type {
+    background: #222 !important;
+}
+
+section.right>div:last-of-type {
+    border-radius: 14px;
+    border: 2px dashed rgb(73 73 73 / 65%);
+    padding: 22px;
+    min-height: 120px;
+    display: grid;
+    place-items: center;
+    color: rgb(0 0 0);
+    opacity: 0.9;
+    background: transparent !important;
+}
+
+.add-url {
+    transition: 0.5s;
+}
+
+.add-url:hover {
+    background: yellow !important;
+    color: #222 !important;
+}
+
+.drop-area {
+    color: #222 !important;
+    border-color: #222 !important;
+}
