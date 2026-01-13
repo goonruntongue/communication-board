@@ -6,7 +6,7 @@
 }
 
 .list-wrap {
-    overflow-x: auto;
+    overflow: auto;
 }
 
 .list-wrap>div {
