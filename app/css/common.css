@@ -120,3 +120,7 @@ section.right>div:last-of-type {
     color: #222 !important;
     border-color: #222 !important;
 }
+
+body {
+    color: red !important;
+}
