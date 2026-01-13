@@ -424,7 +424,12 @@ export default function TopicsPage() {
                           <img
                             src="/images/edit-icon.svg"
                             alt=""
-                            style={{ width: 16, height: 16, opacity: 0.9 }}
+                            style={{
+                              width: 16,
+                              height: 16,
+                              opacity: 0.9,
+                              filter: "invert(0)",
+                            }}
                           />
                         </button>
 
