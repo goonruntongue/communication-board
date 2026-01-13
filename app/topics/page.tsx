@@ -355,6 +355,7 @@ export default function TopicsPage() {
                         alignItems: "center",
                         gap: 8,
                         minWidth: 0,
+                        flexWrap: "wrap",
                       }}
                     >
                       <img
