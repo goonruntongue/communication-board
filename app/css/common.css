@@ -66,6 +66,24 @@ header {
     color: #fff;
 }
 
+.header-inner {
+    width: min(1024px, 96%);
+    margin: 0 auto;
+    position: relative
+}
+
+.header-inner .backlink {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+.header-inner .backlink:hover {
+    filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(500%) hue-rotate(5deg);
+}
+
 .board {
     background: #fff !important;
 }
@@ -123,4 +141,9 @@ section.right>div:last-of-type {
 
 body {
     color: #000 !important;
+}
+
+.edit-btn:hover,
+.del-btn:hover {
+    filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(500%) hue-rotate(5deg);
 }

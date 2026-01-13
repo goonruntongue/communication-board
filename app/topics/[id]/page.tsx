@@ -24,7 +24,7 @@ type FileRow = {
   topic_id: string;
   file_name: string;
   file_url: string;
-  stored_name: string; // ★追加
+  stored_name: string;
   created_by: string;
   created_at: string;
 };
@@ -39,7 +39,7 @@ export default function TopicDetailPage() {
   const [me, setMe] = useState<{
     email: string;
     userId: string;
-    shortId: string; // katsu / kimi
+    shortId: string;
   } | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -48,6 +48,15 @@ export default function TopicDetailPage() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [newBody, setNewBody] = useState("");
   const [sending, setSending] = useState(false);
+
+  // ✅ コメント編集モーダル
+  const [showEditCommentModal, setShowEditCommentModal] = useState(false);
+  const [editTargetComment, setEditTargetComment] = useState<CommentRow | null>(
+    null
+  );
+  const [editBody, setEditBody] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // files
   const [files, setFiles] = useState<FileRow[]>([]);
@@ -58,7 +67,7 @@ export default function TopicDetailPage() {
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // クリックでファイル選択を開くためのinput参照
+  // file picker
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Drag UI
@@ -80,7 +89,6 @@ export default function TopicDetailPage() {
   async function init() {
     setLoading(true);
 
-    // ログイン確認（未ログインなら /login へ）
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -93,7 +101,6 @@ export default function TopicDetailPage() {
     const shortId = user.email.split("@")[0] ?? "unknown";
     setMe({ email: user.email, userId: user.id, shortId });
 
-    // トピック取得
     const { data: topicData, error: topicErr } = await supabase
       .from("topics")
       .select("*")
@@ -107,7 +114,6 @@ export default function TopicDetailPage() {
     }
     setTopic(topicData);
 
-    // コメント & ファイル取得
     await Promise.all([fetchComments(), fetchFiles()]);
 
     setLoading(false);
@@ -126,7 +132,6 @@ export default function TopicDetailPage() {
     }
     setComments(data ?? []);
 
-    // 一番下にスクロール
     requestAnimationFrame(() => {
       if (!listRef.current) return;
       listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -136,9 +141,7 @@ export default function TopicDetailPage() {
   async function fetchFiles() {
     const { data, error } = await supabase
       .from("topic_files")
-      .select(
-        "id, topic_id, file_name, file_url, stored_name, created_by, created_at"
-      )
+      .select("*")
       .eq("topic_id", topicId)
       .order("created_at", { ascending: false });
 
@@ -188,7 +191,63 @@ export default function TopicDetailPage() {
     fetchComments();
   }
 
-  // URL登録でファイルを増やす（手動URLでもDLはBearer付きfetch）
+  // ✅ コメント編集モーダルを開く
+  function openEditCommentModal(c: CommentRow) {
+    setEditTargetComment(c);
+    setEditBody(c.body);
+    setEditError(null);
+    setShowEditCommentModal(true);
+  }
+
+  // ✅ コメント更新
+  async function confirmEditComment() {
+    if (!editTargetComment) return;
+
+    const nextBody = editBody.trim();
+    if (!nextBody) {
+      setEditError("本文を入力してください");
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError(null);
+
+    // 成功/失敗を判定しやすいように select を付ける
+    const { data, error } = await supabase
+      .from("topic_comments")
+      .update({ body: nextBody })
+      .eq("id", editTargetComment.id)
+      .select("id,body");
+
+    setEditLoading(false);
+
+    if (error) {
+      console.error(error);
+      setEditError("更新できませんでした: " + error.message);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setEditError(
+        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。"
+      );
+      return;
+    }
+
+    // ✅ 画面即反映
+    setComments((prev) =>
+      prev.map((x) =>
+        x.id === editTargetComment.id ? { ...x, body: nextBody } : x
+      )
+    );
+
+    setShowEditCommentModal(false);
+    setEditTargetComment(null);
+    setEditBody("");
+    setEditError(null);
+  }
+
+  // URL登録でファイルを増やす
   async function addFileByUrl() {
     if (!me) return;
     if (!newFileName.trim() || !newFileUrl.trim()) return;
@@ -224,34 +283,18 @@ export default function TopicDetailPage() {
     const target = files.find((f) => f.id === fileId);
     if (!target) return;
 
-    // 1) サーバー削除（stored_name がある場合だけ）
-    if (target.stored_name) {
-      const res = await fetch("/api/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stored_name: target.stored_name }),
-      });
+    const res = await fetch("/api/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stored_name: target.stored_name }),
+    });
 
-      let json: any = null;
-      try {
-        json = await res.json();
-      } catch {
-        json = { ok: false, error: "non-json response" };
-      }
-
-      if (!res.ok || !json.ok) {
-        alert("サーバー側の削除に失敗: " + (json.error ?? "unknown"));
-        return;
-      }
-    } else {
-      // stored_name が無い = 直URL追加など
-      const ok2 = confirm(
-        "このデータは stored_name が無いのでサーバー上の実ファイル削除はできません。Supabaseの行だけ削除しますか？"
-      );
-      if (!ok2) return;
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+      alert("サーバー側の削除に失敗: " + (json.error ?? "unknown"));
+      return;
     }
 
-    // 2) Supabase削除
     const { error } = await supabase
       .from("topic_files")
       .delete()
@@ -262,48 +305,34 @@ export default function TopicDetailPage() {
       return;
     }
 
-    // 3) 画面も即更新（fetch待ちしない）
-    setFiles((prev) => prev.filter((x) => x.id !== fileId));
+    fetchFiles();
   }
 
-  // =========================
-  // ✅ ここが今回の本体：アップロード → Supabase登録
-  // =========================
   async function handlePickedFile(file: File) {
-    console.log("picked file.name =", file.name);
-    console.log("picked file.type =", file.type);
-
     if (!me) return;
 
     try {
       setFileBusy(true);
 
-      // 1) Next.js APIへ送る（サクラへ中継）
       const fd = new FormData();
       fd.append("file", file);
 
-      const upRes = await fetch("/api/upload", {
-        method: "POST",
-        body: fd,
-      });
-
+      const upRes = await fetch("/api/upload", { method: "POST", body: fd });
       const upJson = await upRes.json();
 
       if (!upRes.ok || !upJson?.ok) {
         alert(upJson?.error ?? "upload failed");
-        console.log("upload failed:", upJson);
         return;
       }
 
-      // 2) サクラから返ってきた stored_name を使って download.php URL を作る
       const storedName: string = upJson.stored_name;
 
       const fileUrl = `https://promiseasync.sakura.ne.jp/communication-board/endpoint/download.php?name=${encodeURIComponent(
         storedName
       )}`;
 
-      // 3) Supabaseに登録（topic_files）]
       const originalNameFromServer = upJson.file_name ?? file.name;
+
       const { error } = await supabase.from("topic_files").insert({
         topic_id: topicId,
         file_name: originalNameFromServer,
@@ -342,34 +371,24 @@ export default function TopicDetailPage() {
     if (!file) return;
 
     handlePickedFile(file);
-
-    // 同じファイルを連続で選べるようにリセット
     e.target.value = "";
   }
 
   function onKeyDownSend(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Enterで送信、Shift+Enterで改行
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendComment();
     }
   }
 
-  // =========================
-  // ✅ ダウンロード（Bearer付きfetch）
-  // aタグ直リンクではAuthorizationを付けられないため
-  // =========================
   async function downloadFile(fileUrlOrName: string, fileName: string) {
-    // DBに「download.php?name=...」を保存している場合でも動くように name を抜き出す
     let name = fileUrlOrName;
 
     if (fileUrlOrName.includes("name=")) {
       try {
         const u = new URL(fileUrlOrName);
         name = u.searchParams.get("name") || fileUrlOrName;
-      } catch {
-        // URLとして解釈できない場合はそのまま
-      }
+      } catch {}
     }
 
     const res = await fetch(
@@ -399,17 +418,24 @@ export default function TopicDetailPage() {
 
   return (
     <main style={{ background: "#666", minHeight: "100vh" }}>
-      {/* header */}
       <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
-        <img
-          src="/images/data-icon.svg"
-          alt=""
-          style={{ width: 32, height: 32 }}
-        />
-        <span className="first-letter">D</span>ata
+        <div className="header-inner">
+          <img
+            src="/images/back.svg"
+            alt=""
+            onClick={() => history.back()}
+            className="backlink"
+            style={{ cursor: "pointer" }}
+          />
+          <img
+            src="/images/data-icon.svg"
+            alt=""
+            style={{ width: 32, height: 32 }}
+          />
+          <span className="first-letter">D</span>ata
+        </div>
       </header>
 
-      {/* title pill */}
       <div
         className="header-title-pill"
         style={{
@@ -453,11 +479,7 @@ export default function TopicDetailPage() {
           {/* LEFT: comments */}
           <section
             className="left"
-            style={{
-              background: "#8a8a8a",
-              borderRadius: 12,
-              padding: 12,
-            }}
+            style={{ background: "#8a8a8a", borderRadius: 12, padding: 12 }}
           >
             <div
               className="board"
@@ -510,28 +532,56 @@ export default function TopicDetailPage() {
                       </span>
                     </div>
 
-                    {/* 自分のコメントだけ削除 */}
+                    {/* ✅ 自分のコメントだけ 編集 + 削除 */}
                     {me?.shortId === c.created_by && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteComment(c.id);
-                        }}
-                        style={{
-                          marginLeft: "auto",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          opacity: 0.8,
-                        }}
-                        title="削除"
+                      <div
+                        style={{ marginLeft: "auto", display: "flex", gap: 6 }}
                       >
-                        <img
-                          src="/images/trash-can.svg"
-                          alt="delete"
-                          style={{ width: 18, height: 18 }}
-                        />
-                      </button>
+                        {/* 編集 */}
+                        <button
+                          className="edit-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCommentModal(c);
+                          }}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            opacity: 0.85,
+                            padding: "2px 4px 0",
+                          }}
+                          title="編集"
+                        >
+                          <img
+                            src="/images/edit-icon.svg"
+                            alt="edit"
+                            style={{ width: 16, height: 16 }}
+                          />
+                        </button>
+
+                        {/* 削除 */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteComment(c.id);
+                          }}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            opacity: 0.85,
+                            padding: 4,
+                          }}
+                          title="削除"
+                        >
+                          <img
+                            src="/images/trash-can.svg"
+                            alt="delete"
+                            style={{ width: 18, height: 18 }}
+                          />
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -540,7 +590,6 @@ export default function TopicDetailPage() {
               ))}
             </div>
 
-            {/* input */}
             <div
               style={{
                 marginTop: 12,
@@ -589,21 +638,13 @@ export default function TopicDetailPage() {
             </div>
           </section>
 
-          {/* RIGHT: files */}
+          {/* RIGHT: files（あなたのまま） */}
           <section className="right" style={{ display: "grid", gap: 14 }}>
             <div
-              style={{
-                background: "#8a8a8a",
-                borderRadius: 12,
-                padding: 12,
-              }}
+              style={{ background: "#8a8a8a", borderRadius: 12, padding: 12 }}
             >
               <div
-                style={{
-                  background: "#bdbdbd",
-                  borderRadius: 10,
-                  padding: 10,
-                }}
+                style={{ background: "#bdbdbd", borderRadius: 10, padding: 10 }}
               >
                 <div
                   style={{
@@ -628,7 +669,6 @@ export default function TopicDetailPage() {
                       key={f.id}
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
-                      {/* ✅ aタグではなく、Bearer付きfetchでDL */}
                       <button
                         onClick={() => downloadFile(f.file_url, f.file_name)}
                         style={{
@@ -665,7 +705,6 @@ export default function TopicDetailPage() {
                         </div>
                       </button>
 
-                      {/* 自分が登録したファイルだけ削除 */}
                       {me?.shortId === f.created_by && (
                         <button
                           onClick={() => deleteFile(f.id)}
@@ -719,7 +758,6 @@ export default function TopicDetailPage() {
               </div>
             </div>
 
-            {/* 隠しファイルinput（クリックで開く） */}
             <input
               ref={fileInputRef}
               type="file"
@@ -727,7 +765,6 @@ export default function TopicDetailPage() {
               onChange={onFileChange}
             />
 
-            {/* Drop area（クリックでも選べる） */}
             <div
               className="drop-area"
               role="button"
@@ -775,7 +812,88 @@ export default function TopicDetailPage() {
         </div>
       )}
 
-      {/* URL追加モーダル */}
+      {/* ✅ コメント編集モーダル */}
+      {showEditCommentModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 10,
+          }}
+          onClick={() => {
+            if (!editLoading) setShowEditCommentModal(false);
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 16,
+              width: 360,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, marginBottom: 12 }}>コメントを編集</h3>
+
+            <textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              style={{
+                width: "100%",
+                minHeight: 120,
+                resize: "vertical",
+                borderRadius: 8,
+                border: "1px solid #ddd",
+                padding: 10,
+                fontSize: 14,
+              }}
+              disabled={editLoading}
+            />
+
+            {editError && (
+              <div style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
+                {editError}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 14,
+              }}
+            >
+              <button
+                onClick={() => setShowEditCommentModal(false)}
+                disabled={editLoading}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={confirmEditComment}
+                disabled={editLoading}
+                style={{
+                  background: "#000",
+                  color: "#fff",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  opacity: editLoading ? 0.7 : 1,
+                }}
+              >
+                {editLoading ? "..." : "更新"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* URL追加モーダル（あなたのまま） */}
       {showUrlModal && (
         <div
           style={{
@@ -847,7 +965,6 @@ export default function TopicDetailPage() {
         </div>
       )}
 
-      {/* PC表示時だけ2カラムにする */}
       <style jsx global>{`
         @media (min-width: 880px) {
           .topic-detail-grid {
