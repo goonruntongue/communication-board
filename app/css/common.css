@@ -5,10 +5,16 @@
     gap: 1em;
 }
 
+.list-wrap {
+    overflow-x: auto;
+}
+
 .list-wrap>div {
     flex: 1;
     border: 8px solid #333;
     background: #fff !important;
+    max-width: 100%;
+    min-width: 600px;
 }
 
 .list-wrap>div>div>div:first-of-type {
