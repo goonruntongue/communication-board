@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
 
+// Supabase Admin client（ログインユーザー確認用）
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // サーバ専用キー
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 export async function POST(req: Request) {
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ① SupabaseにJWTを検証させる = ログイン中ユーザー確認
+    // Supabaseでログインユーザー確認
     const { data: userData, error: userErr } =
       await supabaseAdmin.auth.getUser(jwt);
 
@@ -31,32 +31,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = userData.user;
+    // ✅ 環境変数に設定した固定トークンを返す
+    const fixedToken = process.env.SAKURA_UPLOAD_TOKEN;
 
-    // ② 短命トークンを発行（5分有効）
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
-    // ③ Supabaseテーブルに保存
-    const { error: insertErr } = await supabaseAdmin
-      .from("upload_tokens")
-      .insert({
-        token,
-        user_id: user.id,
-        expires_at: expiresAt,
-      });
-
-    if (insertErr) {
+    if (!fixedToken) {
       return NextResponse.json(
-        { ok: false, error: insertErr.message },
+        { ok: false, error: "SAKURA_UPLOAD_TOKEN not set" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
       ok: true,
-      token,
-      expires_at: expiresAt,
+      token: fixedToken,
     });
   } catch (e: any) {
     return NextResponse.json(
