@@ -432,8 +432,8 @@ export default function TopicDetailPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${jwt}` },
       });
-      const tokenJson = await tokenRes.json();
 
+      const tokenJson = await tokenRes.json();
       if (!tokenRes.ok || !tokenJson?.ok) {
         alert(tokenJson?.error ?? "token failed");
         return;
@@ -444,10 +444,14 @@ export default function TopicDetailPage() {
       // ③ ブラウザ→サクラへ直アップ（Vercelを経由しない）
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("token", token);
+      // あると便利（拡張子判定・元名保持）
+      fd.append("orig_name", file.name);
 
       const upRes = await fetch(SAKURA_UPLOAD_ENDPOINT, {
         method: "POST",
+        headers: {
+          "X-Upload-Token": token, // ★ ここが重要（upload.php が見るのはこれ）
+        },
         body: fd,
       });
 
