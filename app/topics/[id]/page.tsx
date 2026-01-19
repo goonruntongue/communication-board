@@ -52,7 +52,7 @@ export default function TopicDetailPage() {
   // ✅ コメント編集モーダル
   const [showEditCommentModal, setShowEditCommentModal] = useState(false);
   const [editTargetComment, setEditTargetComment] = useState<CommentRow | null>(
-    null
+    null,
   );
   const [editBody, setEditBody] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
@@ -92,7 +92,11 @@ export default function TopicDetailPage() {
   // 例: https://promiseasync.sakura.ne.jp/communication-board/uploads/<stored_name>
   const SAKURA_UPLOAD_BASE =
     "https://promiseasync.sakura.ne.jp/communication-board/uploads/";
-
+  // ✅ サクラ側 upload.php（直アップ先）
+  // ※ Vercel の env に NEXT_PUBLIC_SAKURA_UPLOAD_URL を用意できるならそちらを優先
+  const SAKURA_UPLOAD_ENDPOINT =
+    process.env.NEXT_PUBLIC_SAKURA_UPLOAD_URL ||
+    "https://promiseasync.sakura.ne.jp/communication-board/endpoint/upload.php";
   // ✅ プレビューURLを作る（stored_name優先。無い場合は file_url をそのまま開く）
   function getPreviewUrl(f: FileRow) {
     if (f.stored_name)
@@ -147,7 +151,7 @@ export default function TopicDetailPage() {
 
     if (!data || data.length === 0) {
       setEditFileError(
-        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。"
+        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。",
       );
       return;
     }
@@ -155,8 +159,8 @@ export default function TopicDetailPage() {
     // ✅ 画面即反映
     setFiles((prev) =>
       prev.map((x) =>
-        x.id === editTargetFile.id ? { ...x, file_name: nextName } : x
-      )
+        x.id === editTargetFile.id ? { ...x, file_name: nextName } : x,
+      ),
     );
 
     setShowEditFileModal(false);
@@ -313,7 +317,7 @@ export default function TopicDetailPage() {
 
     if (!data || data.length === 0) {
       setEditError(
-        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。"
+        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。",
       );
       return;
     }
@@ -321,8 +325,8 @@ export default function TopicDetailPage() {
     // ✅ 画面即反映
     setComments((prev) =>
       prev.map((x) =>
-        x.id === editTargetComment.id ? { ...x, body: nextBody } : x
-      )
+        x.id === editTargetComment.id ? { ...x, body: nextBody } : x,
+      ),
     );
 
     setShowEditCommentModal(false);
@@ -365,7 +369,7 @@ export default function TopicDetailPage() {
     const ok = confirm(
       isUrlAdded(target)
         ? "このリンクを削除しますか？"
-        : "このファイルを削除しますか？（サーバー上の実ファイルも消えます）"
+        : "このファイルを削除しますか？（サーバー上の実ファイルも消えます）",
     );
     if (!ok) return;
 
@@ -414,10 +418,39 @@ export default function TopicDetailPage() {
     try {
       setFileBusy(true);
 
+      // ① Supabaseのアクセストークン取得
+      const { data: sess } = await supabase.auth.getSession();
+      const jwt = sess.session?.access_token;
+
+      if (!jwt) {
+        alert("ログイン情報が取得できません。再ログインしてください。");
+        return;
+      }
+
+      // ② Vercel(Next)の /api/upload-token で短命トークン発行
+      const tokenRes = await fetch("/api/upload-token", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      const tokenJson = await tokenRes.json();
+
+      if (!tokenRes.ok || !tokenJson?.ok) {
+        alert(tokenJson?.error ?? "token failed");
+        return;
+      }
+
+      const token: string = tokenJson.token;
+
+      // ③ ブラウザ→サクラへ直アップ（Vercelを経由しない）
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("token", token);
 
-      const upRes = await fetch("/api/upload", { method: "POST", body: fd });
+      const upRes = await fetch(SAKURA_UPLOAD_ENDPOINT, {
+        method: "POST",
+        body: fd,
+      });
+
       const upJson = await upRes.json();
 
       if (!upRes.ok || !upJson?.ok) {
@@ -428,7 +461,7 @@ export default function TopicDetailPage() {
       const storedName: string = upJson.stored_name;
 
       const fileUrl = `https://promiseasync.sakura.ne.jp/communication-board/endpoint/download.php?name=${encodeURIComponent(
-        storedName
+        storedName,
       )}`;
 
       const originalNameFromServer = upJson.file_name ?? file.name;
@@ -447,6 +480,9 @@ export default function TopicDetailPage() {
       }
 
       fetchFiles();
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message ?? "upload error");
     } finally {
       setFileBusy(false);
     }
@@ -493,8 +529,8 @@ export default function TopicDetailPage() {
 
     const res = await fetch(
       `/api/download?name=${encodeURIComponent(
-        name
-      )}&filename=${encodeURIComponent(fileName || "download")}`
+        name,
+      )}&filename=${encodeURIComponent(fileName || "download")}`,
     );
 
     if (!res.ok) {
