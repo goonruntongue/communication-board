@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import BackButton from "@/components/BackButton";
 
 type Topic = {
   id: string;
@@ -560,13 +561,7 @@ export default function TopicDetailPage() {
     <main style={{ background: "#666", minHeight: "100vh" }}>
       <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
         <div className="header-inner">
-          <img
-            src="/images/back.svg"
-            alt=""
-            onClick={() => history.back()}
-            className="backlink"
-            style={{ cursor: "pointer" }}
-          />
+          <BackButton className="backlink" fallbackHref="/login" />
           <img
             src="/images/data-icon.svg"
             alt=""

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import BackButton from "@/components/BackButton";
 
 type Topic = {
   id: string;
@@ -100,7 +101,7 @@ export default function TopicsPage() {
         { event: "*", schema: "public", table: "topics" },
         () => {
           fetchTopics();
-        }
+        },
       )
       .subscribe();
 
@@ -145,7 +146,7 @@ export default function TopicsPage() {
     const sorted = [...topics].sort(
       (a, b) =>
         new Date(activityTime(b)).getTime() -
-        new Date(activityTime(a)).getTime()
+        new Date(activityTime(a)).getTime(),
     );
 
     const top2 = sorted.slice(0, 2);
@@ -190,7 +191,7 @@ export default function TopicsPage() {
       groups[k].sort(
         (a, b) =>
           new Date(activityTime(b)).getTime() -
-          new Date(activityTime(a)).getTime()
+          new Date(activityTime(a)).getTime(),
       );
     });
 
@@ -231,7 +232,7 @@ export default function TopicsPage() {
     if (userErr || !user?.email) {
       setDeleteLoading(false);
       setDeleteError(
-        "ログイン情報が取得できませんでした。再ログインしてください。"
+        "ログイン情報が取得できませんでした。再ログインしてください。",
       );
       return;
     }
@@ -294,7 +295,7 @@ export default function TopicsPage() {
 
     if (!data || data.length === 0) {
       setEditError(
-        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。"
+        "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。",
       );
       return;
     }
@@ -311,12 +312,7 @@ export default function TopicsPage() {
     <main style={{ padding: 20, background: "#666", minHeight: "100vh" }}>
       <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
         <div className="header-inner">
-          <img
-            src="/images/back.svg"
-            alt=""
-            onClick={() => history.back()}
-            className="backlink"
-          />
+          <BackButton className="backlink" fallbackHref="/login" />
           <img src="/images/topic-icon.svg" className="top-icon" alt="" />{" "}
           <span className="first-letter">T</span>opics
         </div>
