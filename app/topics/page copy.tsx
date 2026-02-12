@@ -30,15 +30,6 @@ export default function TopicsPage() {
   // ✅ カテゴリ一覧 & 選択中カテゴリ（フィルタ用）
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  // ✅ カテゴリ削除 UI（管理モード & 確認モーダル）
-  const [categoryManageMode, setCategoryManageMode] = useState(false);
-  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
-  const [deleteCategoryTarget, setDeleteCategoryTarget] =
-    useState<Category | null>(null);
-  const [deleteCategoryLoading, setDeleteCategoryLoading] = useState(false);
-  const [deleteCategoryError, setDeleteCategoryError] = useState<string | null>(
-    null,
-  );
 
   // ✅ カテゴリ新規作成UI用
   const [showCategoryInput, setShowCategoryInput] = useState(false);
@@ -109,12 +100,6 @@ export default function TopicsPage() {
     }
 
     setCategories((data ?? []) as Category[]);
-  }
-  // ✅ カテゴリ削除
-  function openDeleteCategoryModal(category: Category) {
-    setDeleteCategoryTarget(category);
-    setDeleteCategoryError(null);
-    setShowDeleteCategoryModal(true);
   }
 
   async function createCategory() {
@@ -271,52 +256,6 @@ export default function TopicsPage() {
     setNewTitle("");
     setCreateCategoryIds([]); // ✅ リセット
     setShowCreateModal(false);
-    fetchTopics();
-  }
-
-  // ✅ カテゴリ削除
-  async function confirmDeleteCategory() {
-    if (!deleteCategoryTarget) return;
-
-    setDeleteCategoryLoading(true);
-    setDeleteCategoryError(null);
-
-    const categoryId = deleteCategoryTarget.id;
-
-    // 1) 中間テーブルから先に削除（FKがある場合ここが必須）
-    const { error: e1 } = await supabase
-      .from("topic_categories")
-      .delete()
-      .eq("category_id", categoryId);
-
-    if (e1) {
-      setDeleteCategoryLoading(false);
-      setDeleteCategoryError("紐付け削除に失敗: " + e1.message);
-      return;
-    }
-
-    // 2) categories から削除
-    const { error: e2 } = await supabase
-      .from("categories")
-      .delete()
-      .eq("id", categoryId);
-
-    setDeleteCategoryLoading(false);
-
-    if (e2) {
-      setDeleteCategoryError("カテゴリ削除に失敗: " + e2.message);
-      return;
-    }
-
-    // 3) UI側の選択状態も整合させる
-    setSelectedCategoryIds((prev) => prev.filter((x) => x !== categoryId));
-    setCreateCategoryIds((prev) => prev.filter((x) => x !== categoryId));
-
-    setShowDeleteCategoryModal(false);
-    setDeleteCategoryTarget(null);
-
-    // 4) 再取得
-    fetchCategories();
     fetchTopics();
   }
 
@@ -580,23 +519,6 @@ export default function TopicsPage() {
             >
               すべて
             </button>
-            {/* ✅ カテゴリ管理モード切替 */}
-            <button
-              type="button"
-              onClick={() => setCategoryManageMode((v) => !v)}
-              style={{
-                border: "1px solid #bbb",
-                background: categoryManageMode ? "#111" : "transparent",
-                color: categoryManageMode ? "#fff" : "#111",
-                padding: "4px 10px",
-                borderRadius: 999,
-                cursor: "pointer",
-                fontSize: 12,
-              }}
-              title="カテゴリの削除など管理操作"
-            >
-              {categoryManageMode ? "管理中" : "管理"}
-            </button>
 
             {/* ✅ カテゴリ追加ボタン */}
             <button
@@ -617,11 +539,9 @@ export default function TopicsPage() {
                 fontSize: 18,
                 lineHeight: "26px",
               }}
-              title={
-                showCategoryInput ? "カテゴリ作成を閉じる" : "カテゴリを追加"
-              }
+              title="カテゴリを追加"
             >
-              {showCategoryInput ? "−" : "+"}
+              +
             </button>
           </div>
           {/* ✅ カテゴリ新規作成入力 */}
@@ -685,7 +605,6 @@ export default function TopicsPage() {
 
             {categories.map((c) => {
               const active = selectedCategoryIds.includes(c.id);
-
               return (
                 <button
                   key={c.id}
@@ -699,45 +618,10 @@ export default function TopicsPage() {
                     cursor: "pointer",
                     fontSize: 12,
                     fontWeight: active ? 700 : 500,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
                   }}
                   title="クリックで絞り込み（複数選択可）"
                 >
-                  <span>{c.name}</span>
-
-                  {/* ✅ 管理モード時だけ削除ボタン */}
-                  {categoryManageMode && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation(); // ✅ 絞り込みクリックを止める
-                        openDeleteCategoryModal(c);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openDeleteCategoryModal(c);
-                        }
-                      }}
-                      style={{
-                        width: 16,
-                        height: 16,
-                        lineHeight: "16px",
-                        textAlign: "center",
-                        borderRadius: 999,
-                        border: "1px solid #999",
-                        fontSize: 11,
-                        cursor: "pointer",
-                        background: "#fff",
-                      }}
-                      title="カテゴリを削除"
-                    >
-                      ×
-                    </span>
-                  )}
+                  {c.name}
                 </button>
               );
             })}
@@ -1015,13 +899,9 @@ export default function TopicsPage() {
                     fontSize: 18,
                     lineHeight: "24px",
                   }}
-                  title={
-                    showModalCategoryInput
-                      ? "カテゴリ作成を閉じる"
-                      : "カテゴリを追加"
-                  }
+                  title="カテゴリを追加"
                 >
-                  {showModalCategoryInput ? "−" : "+"}
+                  +
                 </button>
               </div>
 
@@ -1038,7 +918,6 @@ export default function TopicsPage() {
                       padding: "0 10px",
                       border: "1px solid #bbb",
                       borderRadius: 8,
-                      width: "70%",
                     }}
                     disabled={modalCategoryCreating}
                     onKeyDown={(e) => {
@@ -1268,78 +1147,6 @@ export default function TopicsPage() {
                 }}
               >
                 {deleteLoading ? "削除中..." : "削除する"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ✅ カテゴリ削除モーダル */}
-      {showDeleteCategoryModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "grid",
-            placeItems: "center",
-            zIndex: 1000,
-          }}
-          onClick={() => {
-            if (!deleteCategoryLoading) setShowDeleteCategoryModal(false);
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: 20,
-              borderRadius: 12,
-              width: 340,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginBottom: 10 }}>カテゴリを削除しますか？</h3>
-
-            <div style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.6 }}>
-              対象：<b>{deleteCategoryTarget?.name}</b>
-              <br />
-              このカテゴリが付いているトピックからも外れます。
-            </div>
-
-            {deleteCategoryError && (
-              <p style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
-                {deleteCategoryError}
-              </p>
-            )}
-
-            <div
-              style={{
-                marginTop: 15,
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-              }}
-            >
-              <button
-                onClick={() => setShowDeleteCategoryModal(false)}
-                disabled={deleteCategoryLoading}
-              >
-                キャンセル
-              </button>
-
-              <button
-                onClick={confirmDeleteCategory}
-                disabled={deleteCategoryLoading}
-                style={{
-                  background: "#111",
-                  color: "#fff",
-                  border: "none",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  opacity: deleteCategoryLoading ? 0.6 : 1,
-                }}
-              >
-                {deleteCategoryLoading ? "削除中..." : "削除する"}
               </button>
             </div>
           </div>
