@@ -3,7 +3,7 @@
     /* align-items: center; */
     justify-content: flex-start;
     flex-direction: column;
-    gap: 1em;
+    /* gap: 1em; */
 }
 
 .list-wrap {
@@ -199,10 +199,4 @@ body {
     background-color: #fff !important;
     border: 2px solid #222;
     border-radius: 4px;
-}
-
-.btns-wrap {
-    min-width: 64px;
-    display: flex;
-    align-items: flex-start;
 }
