@@ -1,7 +1,8 @@
 .list-wrap {
     display: flex;
-    align-items: center;
+    /* align-items: center; */
     justify-content: flex-start;
+    flex-direction: column;
     gap: 1em;
 }
 
@@ -14,7 +15,7 @@
     border: 8px solid #333;
     background: #fff !important;
     max-width: 100%;
-    min-width: 500px;
+    /* min-width: 500px; */
 }
 
 .list-wrap>div>div>div:first-of-type {
@@ -190,4 +191,16 @@ body {
     border-bottom: 1px solid #888;
     margin: 0 !important;
     padding: 1em;
+}
+
+.list-wrap>div>div>div:first-of-type.cat-title {
+    padding: 0.25em 0.5em;
+    color: #000 !important;
+    background-color: #fff !important;
+    border: 2px solid #222;
+    border-radius: 4px;
+}
+
+btns-wrap {
+    min-width: 60px;
 }

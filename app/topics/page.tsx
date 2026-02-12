@@ -11,7 +11,11 @@ type Topic = {
   created_by: string;
   created_at: string;
   last_activity_at?: string; // ✅ 追加
+  categories: Category[]; // ✅ 追加（必ず配列で持つ）
 };
+
+// ✅ カテゴリ型
+type Category = { id: string; name: string };
 
 export default function TopicsPage() {
   const router = useRouter();
@@ -22,6 +26,27 @@ export default function TopicsPage() {
 
   // ✅ ログイン中ユーザーの短縮ID（katsu / kimi）
   const [myId, setMyId] = useState<string | null>(null);
+
+  // ✅ カテゴリ一覧 & 選択中カテゴリ（フィルタ用）
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
+  // ✅ カテゴリ新規作成UI用
+  const [showCategoryInput, setShowCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryCreating, setCategoryCreating] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  // ✅ 新規作成モーダル用（トピックに付けるカテゴリ）
+  const [createCategoryIds, setCreateCategoryIds] = useState<string[]>([]);
+
+  // ✅ モーダル内カテゴリ新規作成UI用
+  const [showModalCategoryInput, setShowModalCategoryInput] = useState(false);
+  const [newModalCategoryName, setNewModalCategoryName] = useState("");
+  const [modalCategoryCreating, setModalCategoryCreating] = useState(false);
+  const [modalCategoryError, setModalCategoryError] = useState<string | null>(
+    null,
+  );
 
   // --- 新規作成モーダル ---
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -49,7 +74,57 @@ export default function TopicsPage() {
   // ✅ “更新日時” を返す（無い場合は created_at）
   const activityTime = (t: Topic) => t.last_activity_at ?? t.created_at;
 
-  // 初回：ログイン中ユーザーID取得 → トピック一覧取得
+  // ✅ カテゴリ選択トグル
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+  function toggleCreateCategory(id: string) {
+    setCreateCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  // ✅ カテゴリ取得
+  async function fetchCategories() {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id,name")
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      // categories テーブルがまだ無い場合もありえるので alert は出さない
+      return;
+    }
+
+    setCategories((data ?? []) as Category[]);
+  }
+
+  async function createCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    setCategoryCreating(true);
+    setCategoryError(null);
+
+    const { error } = await supabase.from("categories").insert({ name });
+
+    setCategoryCreating(false);
+
+    if (error) {
+      // unique制約がある想定：同名カテゴリはエラーになる
+      setCategoryError("作成できませんでした: " + error.message);
+      return;
+    }
+
+    setNewCategoryName("");
+    setShowCategoryInput(false);
+    fetchCategories();
+  }
+
+  // 初回：ログイン中ユーザーID取得 → トピック一覧取得 → カテゴリ取得
   useEffect(() => {
     (async () => {
       const {
@@ -60,6 +135,7 @@ export default function TopicsPage() {
       setMyId(id);
 
       fetchTopics();
+      fetchCategories(); // ✅ 追加
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -70,7 +146,14 @@ export default function TopicsPage() {
 
     const { data, error } = await supabase
       .from("topics")
-      .select("id,title,created_by,created_at,last_activity_at")
+      .select(
+        `
+      id,title,created_by,created_at,last_activity_at,
+      topic_categories(
+        categories(id,name)
+      )
+    `,
+      )
       .order("last_activity_at", { ascending: false });
 
     if (error) {
@@ -80,13 +163,27 @@ export default function TopicsPage() {
       return;
     }
 
-    setTopics((data ?? []) as Topic[]);
+    const normalized: Topic[] = (data ?? []).map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      created_by: t.created_by,
+      created_at: t.created_at,
+      last_activity_at: t.last_activity_at,
+      categories: (t.topic_categories ?? [])
+        .map((tc: any) => tc.categories)
+        .filter(Boolean),
+    }));
+
+    setTopics(normalized);
     setLoading(false);
   }
 
   // ✅ 画面復帰時にも最新に（詳細→戻る等）
   useEffect(() => {
-    const onFocus = () => fetchTopics();
+    const onFocus = () => {
+      fetchTopics();
+      fetchCategories(); // ✅ ついでにカテゴリも更新
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,19 +220,77 @@ export default function TopicsPage() {
 
     const created_by = user.email?.split("@")[0] ?? "unknown";
 
-    const { error } = await supabase.from("topics").insert({
-      title: newTitle.trim(),
-      created_by,
-    });
+    // 1) topics を作成して id を受け取る
+    const { data: inserted, error: e1 } = await supabase
+      .from("topics")
+      .insert({
+        title: newTitle.trim(),
+        created_by,
+      })
+      .select("id")
+      .single();
 
-    if (error) {
-      alert("作成に失敗: " + error.message);
+    if (e1) {
+      alert("作成に失敗: " + e1.message);
       return;
     }
 
+    // 2) 選択カテゴリがあれば topic_categories に保存
+    if (createCategoryIds.length > 0) {
+      const rows = createCategoryIds.map((cid) => ({
+        topic_id: inserted.id,
+        category_id: cid,
+      }));
+
+      const { error: e2 } = await supabase
+        .from("topic_categories")
+        .insert(rows);
+
+      if (e2) {
+        alert("カテゴリ紐付けに失敗: " + e2.message);
+        // topics自体は作成済みなので、ここでreturnしてもOK（今回はreturn）
+        return;
+      }
+    }
+
     setNewTitle("");
+    setCreateCategoryIds([]); // ✅ リセット
     setShowCreateModal(false);
     fetchTopics();
+  }
+
+  async function createCategoryInModal() {
+    const name = newModalCategoryName.trim();
+    if (!name) return;
+
+    setModalCategoryCreating(true);
+    setModalCategoryError(null);
+
+    // 1) categories に insert（id も欲しいので select）
+    const { data: inserted, error } = await supabase
+      .from("categories")
+      .insert({ name })
+      .select("id,name")
+      .single();
+
+    setModalCategoryCreating(false);
+
+    if (error) {
+      setModalCategoryError("作成できませんでした: " + error.message);
+      return;
+    }
+
+    // 2) カテゴリ一覧を更新
+    await fetchCategories();
+
+    // 3) 作成したカテゴリを自動で選択状態にする
+    setCreateCategoryIds((prev) =>
+      prev.includes(inserted.id) ? prev : [...prev, inserted.id],
+    );
+
+    // 4) 入力を閉じる
+    setNewModalCategoryName("");
+    setShowModalCategoryInput(false);
   }
 
   // ✅ HOT 判定：3日以内＆最新2件
@@ -160,6 +315,18 @@ export default function TopicsPage() {
     return ids;
   }, [topics]);
 
+  // ✅ フィルタ適用した topics を作る（現段階では Topic に categories が無いので“仮”）
+  // まずUIだけ動かすため、今は selectedCategoryIds が空なら全件表示。
+  // 実データの紐付けを入れた段階で、ここを本フィルタにします。
+  const filteredTopics = useMemo(() => {
+    if (selectedCategoryIds.length === 0) return topics;
+
+    return topics.filter((t) => {
+      const ids = t.categories.map((c) => c.id);
+      return selectedCategoryIds.every((x) => ids.includes(x));
+    });
+  }, [topics, selectedCategoryIds]);
+
   // 日付グループ化（✅ “更新日” 基準に変更）
   // ✅ JST基準で YYYY.MM.DD を作る
   const formatDateJST = (iso: string) => {
@@ -178,6 +345,7 @@ export default function TopicsPage() {
     });
     return `${y}.${m}.${day}`;
   };
+
   const groupByDate = (items: Topic[]) => {
     const groups: { [date: string]: Topic[] } = {};
     items.forEach((topic) => {
@@ -198,7 +366,8 @@ export default function TopicsPage() {
     return groups;
   };
 
-  const grouped = useMemo(() => groupByDate(topics), [topics]);
+  // ✅ grouped は filteredTopics から作る（ここが“絞り込み反映”ポイント）
+  const grouped = useMemo(() => groupByDate(filteredTopics), [filteredTopics]);
 
   function openDeleteModal(topic: Topic) {
     setDeleteTarget(topic);
@@ -318,7 +487,154 @@ export default function TopicsPage() {
         </div>
       </header>
 
-      <div className="list-wrap">
+      {/* ✅ カテゴリチップUI（ここから追加） */}
+      <div className="list-wrap" style={{ marginTop: 10 }}>
+        <div
+          style={{
+            background: "#fff",
+            padding: 16,
+            borderRadius: 12,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontWeight: 700 }} className="cat-title">
+              カテゴリー
+            </div>
+
+            {/* 何も選んでない＝全件 */}
+            <button
+              type="button"
+              onClick={() => setSelectedCategoryIds([])}
+              style={{
+                border: "1px solid #bbb",
+                background:
+                  selectedCategoryIds.length === 0 ? "#111" : "transparent",
+                color: selectedCategoryIds.length === 0 ? "#fff" : "#111",
+                padding: "4px 10px",
+                borderRadius: 999,
+                cursor: "pointer",
+                fontSize: 12,
+              }}
+            >
+              すべて
+            </button>
+
+            {/* ✅ カテゴリ追加ボタン */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowCategoryInput((v) => !v);
+                setCategoryError(null);
+                setNewCategoryName("");
+              }}
+              style={{
+                marginLeft: "auto",
+                border: "1px solid #bbb",
+                background: "transparent",
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                cursor: "pointer",
+                fontSize: 18,
+                lineHeight: "26px",
+              }}
+              title="カテゴリを追加"
+            >
+              +
+            </button>
+          </div>
+          {/* ✅ カテゴリ新規作成入力 */}
+          {showCategoryInput && (
+            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+              <input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="新しいカテゴリ名"
+                style={{
+                  flex: 1,
+                  height: 34,
+                  padding: "0 10px",
+                  border: "1px solid #bbb",
+                  borderRadius: 8,
+                }}
+                disabled={categoryCreating}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") createCategory();
+                }}
+              />
+              <button
+                type="button"
+                onClick={createCategory}
+                disabled={categoryCreating}
+                style={{
+                  height: 34,
+                  padding: "0 12px",
+                  border: "1px solid #bbb",
+                  borderRadius: 8,
+                  background: "#111",
+                  color: "#fff",
+                  cursor: "pointer",
+                  opacity: categoryCreating ? 0.6 : 1,
+                }}
+              >
+                {categoryCreating ? "作成中..." : "作成"}
+              </button>
+            </div>
+          )}
+
+          {categoryError && (
+            <div style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
+              {categoryError}
+            </div>
+          )}
+
+          <div
+            style={{
+              marginTop: 10,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            {categories.length === 0 && (
+              <div style={{ fontSize: 12, color: "#666" }}>
+                （カテゴリがありません）
+              </div>
+            )}
+
+            {categories.map((c) => {
+              const active = selectedCategoryIds.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCategory(c.id)}
+                  style={{
+                    border: "1px solid #bbb",
+                    background: active ? "#ffe94d" : "transparent",
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: active ? 700 : 500,
+                  }}
+                  title="クリックで絞り込み（複数選択可）"
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedCategoryIds.length > 0 && (
+            <div style={{ marginTop: 10, fontSize: 12, color: "#444" }}>
+              絞り込み中：{selectedCategoryIds.length}件
+            </div>
+          )}
+        </div>
+
+        {/* ✅ トピック一覧 */}
         <div
           style={{
             background: "#ccc",
@@ -374,10 +690,10 @@ export default function TopicsPage() {
                       />
                       <div
                         style={{
-                          whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           display: "flex",
+                          flexWrap: "wrap",
                           alignItems: "center",
                           gap: 8,
                         }}
@@ -388,7 +704,23 @@ export default function TopicsPage() {
                             {displayName(topic.created_by)}
                           </span>
                         </span>
-
+                        {/* ✅ Categories */}
+                        {topic.categories?.map((c) => (
+                          <span
+                            key={c.id}
+                            style={{
+                              border: "1px solid #bbb",
+                              borderRadius: 999,
+                              padding: "2px 8px",
+                              fontSize: 11,
+                              background: "#ffe94d",
+                              fontWeight: 700,
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {c.name}
+                          </span>
+                        ))}
                         {/* ✅ HOT */}
                         {hotIds.has(topic.id) && (
                           <span
@@ -415,6 +747,7 @@ export default function TopicsPage() {
                           alignItems: "center",
                           gap: 6,
                         }}
+                        className="btns-wrap"
                       >
                         <button
                           className="edit-btn"
@@ -475,7 +808,13 @@ export default function TopicsPage() {
 
       {/* ＋ボタン */}
       <button
-        onClick={() => setShowCreateModal(true)}
+        onClick={() => {
+          setCreateCategoryIds([]);
+          setShowModalCategoryInput(false); // ✅ 追加
+          setNewModalCategoryName(""); // ✅ 追加
+          setModalCategoryError(null); // ✅ 追加
+          setShowCreateModal(true);
+        }}
         style={{
           position: "fixed",
           bottom: 30,
@@ -502,7 +841,10 @@ export default function TopicsPage() {
             display: "grid",
             placeItems: "center",
           }}
-          onClick={() => setShowCreateModal(false)}
+          onClick={() => {
+            setShowCreateModal(false);
+            setCreateCategoryIds([]);
+          }}
         >
           <div
             style={{
@@ -525,8 +867,129 @@ export default function TopicsPage() {
                 padding: "0 10px",
               }}
             />
+            {/* ✅ カテゴリ選択（複数可） */}
+            <div style={{ marginTop: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  marginBottom: 6,
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700 }}>
+                  カテゴリー（複数選択）
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModalCategoryInput((v) => !v);
+                    setModalCategoryError(null);
+                    setNewModalCategoryName("");
+                  }}
+                  style={{
+                    border: "1px solid #bbb",
+                    background: "transparent",
+                    width: 26,
+                    height: 26,
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    fontSize: 18,
+                    lineHeight: "24px",
+                  }}
+                  title="カテゴリを追加"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* ✅ モーダル内：カテゴリ新規作成入力 */}
+              {showModalCategoryInput && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <input
+                    value={newModalCategoryName}
+                    onChange={(e) => setNewModalCategoryName(e.target.value)}
+                    placeholder="新しいカテゴリ名"
+                    style={{
+                      flex: 1,
+                      height: 34,
+                      padding: "0 10px",
+                      border: "1px solid #bbb",
+                      borderRadius: 8,
+                    }}
+                    disabled={modalCategoryCreating}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") createCategoryInModal();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={createCategoryInModal}
+                    disabled={modalCategoryCreating}
+                    style={{
+                      height: 34,
+                      padding: "0 12px",
+                      border: "1px solid #bbb",
+                      borderRadius: 8,
+                      background: "#111",
+                      color: "#fff",
+                      cursor: "pointer",
+                      opacity: modalCategoryCreating ? 0.6 : 1,
+                    }}
+                  >
+                    {modalCategoryCreating ? "作成中..." : "作成"}
+                  </button>
+                </div>
+              )}
+
+              {modalCategoryError && (
+                <div
+                  style={{ marginBottom: 8, fontSize: 12, color: "crimson" }}
+                >
+                  {modalCategoryError}
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {categories.length === 0 && (
+                  <div style={{ fontSize: 12, color: "#666" }}>
+                    （カテゴリがありません）
+                  </div>
+                )}
+
+                {categories.map((c) => {
+                  const active = createCategoryIds.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleCreateCategory(c.id)}
+                      style={{
+                        border: "1px solid #bbb",
+                        background: active ? "#ffe94d" : "transparent",
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: active ? 700 : 500,
+                      }}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div style={{ marginTop: 15, textAlign: "right" }}>
-              <button onClick={() => setShowCreateModal(false)}>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateCategoryIds([]);
+                }}
+              >
                 キャンセル
               </button>
               <button onClick={createTopic} style={{ marginLeft: 10 }}>
