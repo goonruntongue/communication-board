@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import BackButton from "@/components/BackButton";
-
+import PushEnableButton from "@/components/PushEnableButton";
 type Topic = {
   id: string;
   title: string;
@@ -602,6 +602,7 @@ export default function TopicsPage() {
   return (
     <main style={{ padding: 20, background: "#666", minHeight: "100vh" }}>
       <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
+        <PushEnableButton />
         <div className="header-inner">
           <BackButton className="backlink" fallbackHref="/login" />
           <img src="/images/topic-icon.svg" className="top-icon" alt="" />{" "}
