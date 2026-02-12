@@ -73,6 +73,14 @@ export default function TopicsPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  // ✅ 編集モーダル：カテゴリ付け替え用
+  const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
+
+  function toggleEditCategory(id: string) {
+    setEditCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   const displayName = (id: string) => {
     if (id === "katsu") return "Fanio";
@@ -440,6 +448,7 @@ export default function TopicsPage() {
   function openEditModal(topic: Topic) {
     setEditTarget(topic);
     setEditTitle(topic.title);
+    setEditCategoryIds(topic.categories?.map((c) => c.id) ?? []);
     setEditError(null);
     setShowEditModal(true);
   }
@@ -509,32 +518,74 @@ export default function TopicsPage() {
     setEditLoading(true);
     setEditError(null);
 
-    const { data, error } = await supabase
+    // ✅ 1) topics を更新（カテゴリ変更だけでも更新扱いにしたいので last_activity_at も更新）
+    const { data: updated, error: e1 } = await supabase
       .from("topics")
-      .update({ title: nextTitle })
+      .update({
+        title: nextTitle,
+        last_activity_at: new Date().toISOString(),
+      })
       .eq("id", editTarget.id)
       .select("id,title,last_activity_at");
 
-    setEditLoading(false);
-
-    if (error) {
-      console.error(error);
-      setEditError("更新できませんでした: " + error.message);
+    if (e1) {
+      setEditLoading(false);
+      console.error(e1);
+      setEditError("更新できませんでした: " + e1.message);
       return;
     }
 
-    if (!data || data.length === 0) {
+    if (!updated || updated.length === 0) {
+      setEditLoading(false);
       setEditError(
         "更新が反映されませんでした（RLS/権限の可能性）。SupabaseのUPDATEポリシーを確認してください。",
       );
       return;
     }
 
-    // ✅ いったん再取得（並び替えにも効く）
+    // ✅ 2) topic_categories を同期（いったん全削除 → 選択分を再insert）
+    //    （FK/RLSがあるなら、この順が一番事故りにくい）
+    const topicId = editTarget.id;
+
+    const { error: e2 } = await supabase
+      .from("topic_categories")
+      .delete()
+      .eq("topic_id", topicId);
+
+    if (e2) {
+      setEditLoading(false);
+      console.error(e2);
+      setEditError("カテゴリの付け替え（既存削除）に失敗: " + e2.message);
+      return;
+    }
+
+    if (editCategoryIds.length > 0) {
+      const rows = editCategoryIds.map((cid) => ({
+        topic_id: topicId,
+        category_id: cid,
+      }));
+
+      const { error: e3 } = await supabase
+        .from("topic_categories")
+        .insert(rows);
+
+      if (e3) {
+        setEditLoading(false);
+        console.error(e3);
+        setEditError("カテゴリの付け替え（再登録）に失敗: " + e3.message);
+        return;
+      }
+    }
+
+    // ✅ 3) 後処理
+    setEditLoading(false);
     setShowEditModal(false);
     setEditTarget(null);
     setEditTitle("");
+    setEditCategoryIds([]);
     setEditError(null);
+
+    // ✅ 並び替え・カテゴリ表示にも効かせる
     fetchTopics();
   }
 
@@ -856,42 +907,44 @@ export default function TopicsPage() {
                       </div>
                     </div>
 
-                    {myId === topic.created_by && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                      className="btns-wrap"
+                    >
+                      {/* ✅ 編集は誰でもOK：常に表示 */}
+                      <button
+                        className="edit-btn"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(topic);
                         }}
-                        className="btns-wrap"
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: "4px 4px 0",
+                        }}
+                        title="編集"
                       >
-                        <button
-                          className="edit-btn"
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditModal(topic);
-                          }}
+                        <img
+                          src="/images/edit-icon.svg"
+                          alt=""
                           style={{
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            padding: "4px 4px 0",
+                            width: 16,
+                            height: 16,
+                            opacity: 0.9,
+                            filter: "invert(0)",
                           }}
-                          title="編集"
-                        >
-                          <img
-                            src="/images/edit-icon.svg"
-                            alt=""
-                            style={{
-                              width: 16,
-                              height: 16,
-                              opacity: 0.9,
-                              filter: "invert(0)",
-                            }}
-                          />
-                        </button>
+                        />
+                      </button>
 
+                      {/* ✅ 削除は作成者のみ：今まで通り */}
+                      {myId === topic.created_by && (
                         <button
                           type="button"
                           className="del-btn"
@@ -913,8 +966,8 @@ export default function TopicsPage() {
                             style={{ width: 18, height: 18, opacity: 0.9 }}
                           />
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1153,6 +1206,44 @@ export default function TopicsPage() {
               style={{ width: "100%", height: 40, padding: "0 10px" }}
               disabled={editLoading}
             />
+            {/* ✅ 編集モーダル：カテゴリ付け替え（複数可） */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                カテゴリー（複数選択）
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {categories.length === 0 && (
+                  <div style={{ fontSize: 12, color: "#666" }}>
+                    （カテゴリがありません）
+                  </div>
+                )}
+
+                {categories.map((c) => {
+                  const active = editCategoryIds.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleEditCategory(c.id)}
+                      disabled={editLoading}
+                      style={{
+                        border: "1px solid #bbb",
+                        background: active ? "#ffe94d" : "transparent",
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: active ? 700 : 500,
+                        opacity: editLoading ? 0.7 : 1,
+                      }}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {editError && (
               <p style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
