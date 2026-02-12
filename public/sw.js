@@ -1,20 +1,37 @@
 // public/sw.js
-self.addEventListener("push", function (event) {
-  if (!event.data) return;
 
-  const data = event.data.json();
-  const options = {
-    body: data.body,
-    icon: data.icon || "/icon-192x192.png",
-    badge: "/icon-192x192.png",
-    data: data.url || "/topics",
-  };
+self.addEventListener("push", (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (e) {
+        data = { title: "更新があります", message: "アプリを開いて確認してください", url: "/topics" };
+    }
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+    const title = data.title || "更新があります";
+    const options = {
+        body: data.message || "アプリを開いて確認してください",
+        data: { url: data.url || "/topics" },
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener("notificationclick", function (event) {
-  event.notification.close();
-  const url = event.notification.data || "/topics";
-  event.waitUntil(clients.openWindow(url));
+self.addEventListener("notificationclick", (event) => {
+    event.notification.close();
+    const url = event.notification ? .data ? .url || "/topics";
+
+    event.waitUntil(
+        (async() => {
+            const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+            for (const client of allClients) {
+                if ("focus" in client) {
+                    client.focus();
+                    client.navigate(url);
+                    return;
+                }
+            }
+            clients.openWindow(url);
+        })(),
+    );
 });
