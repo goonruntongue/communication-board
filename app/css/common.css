@@ -203,4 +203,6 @@ body {
 
 .btns-wrap {
     min-width: 64px;
+    display: flex;
+    align-items: flex-start;
 }

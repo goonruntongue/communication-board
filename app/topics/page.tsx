@@ -667,7 +667,7 @@ export default function TopicsPage() {
                     key={topic.id}
                     style={{
                       display: "flex",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       justifyContent: "space-between",
                       gap: 8,
                       margin: "1em 0",
@@ -678,7 +678,7 @@ export default function TopicsPage() {
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
+                        alignItems: "flex-start",
                         gap: 8,
                         minWidth: 0,
                       }}
