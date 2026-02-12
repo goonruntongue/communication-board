@@ -201,6 +201,6 @@ body {
     border-radius: 4px;
 }
 
-btns-wrap {
-    min-width: 60px;
+.btns-wrap {
+    min-width: 64px;
 }
