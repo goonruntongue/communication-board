@@ -279,6 +279,16 @@ export default function TopicsPage() {
     setNewTitle("");
     setCreateCategoryIds([]); // ✅ リセット
     setShowCreateModal(false);
+    // ✅ トピック作成成功 → 全員へPush通知
+    await fetch("/api/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "新しいトピックが作成されました",
+        message: `「${newTitle.trim()}」`,
+        url: "/topics", // ここを `/topics/${inserted.id}` にしてもOK
+      }),
+    });
     fetchTopics();
   }
 
