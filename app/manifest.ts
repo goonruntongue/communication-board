@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Communication Board",
-    short_name: "CommBoard",
+    short_name: "Communication Board",
     description: "Communication Board PWA",
     start_url: "/",
     display: "standalone",
