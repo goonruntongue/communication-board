@@ -115,6 +115,53 @@ export default function TopicDetailPage() {
     return !f.stored_name || !String(f.stored_name).trim();
   }
 
+  async function safePushNotify(payload: {
+    title: string;
+    message: string;
+    url: string;
+  }) {
+    try {
+      await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // Push失敗でUIを壊さない（握りつぶす）
+    }
+  }
+
+  // ✅ コメント投稿のPush通知文を作る（長すぎ防止）
+  function buildCommentPushPayload(body: string) {
+    const title = topic?.title
+      ? `新しいコメント：${topic.title}`
+      : "新しいコメント";
+    const oneLine = body.replace(/\s+/g, " ").trim();
+    const message = oneLine.length > 80 ? oneLine.slice(0, 80) + "…" : oneLine;
+
+    return {
+      title,
+      message,
+      url: `/topics/${topicId}`,
+    };
+  }
+  // ✅ ファイル追加のPush通知文を作る（長すぎ防止）
+  function buildFilePushPayload(fileName: string, kind: "upload" | "url") {
+    const prefix = kind === "upload" ? "ファイル" : "URL";
+    const title = topic?.title
+      ? `新しい${prefix}：${topic.title}`
+      : `新しい${prefix}が追加されました`;
+
+    const oneLine = (fileName ?? "").replace(/\s+/g, " ").trim();
+    const message = oneLine.length > 80 ? oneLine.slice(0, 80) + "…" : oneLine;
+
+    return {
+      title,
+      message,
+      url: `/topics/${topicId}`,
+    };
+  }
+
   // ✅ ファイル名編集モーダルを開く（新規）
   function openEditFileModal(f: FileRow) {
     setEditTargetFile(f);
@@ -208,23 +255,64 @@ export default function TopicDetailPage() {
     setLoading(false);
   }
 
-  async function fetchComments() {
-    const { data, error } = await supabase
-      .from("topic_comments")
-      .select("*")
-      .eq("topic_id", topicId)
-      .order("created_at", { ascending: true });
+  type CommentColumn = "body" | "content" | "comment";
 
-    if (error) {
-      console.error(error);
-      return;
+  // topic_comments の本文カラム名を「存在するもの」に合わせて決める
+  async function detectCommentColumn(): Promise<CommentColumn> {
+    const candidates: CommentColumn[] = ["body", "content", "comment"];
+
+    for (const col of candidates) {
+      const { error } = await supabase
+        .from("topic_comments")
+        .select(`id,${col}`)
+        .eq("topic_id", topicId)
+        .limit(1);
+
+      if (!error) return col;
+
+      // 「列がない」系なら次を試す。それ以外は本当のエラーなので投げる
+      const msg = error.message ?? "";
+      const isMissingColumn =
+        msg.includes("does not exist") || msg.includes("schema cache");
+
+      if (!isMissingColumn) throw error;
     }
-    setComments(data ?? []);
 
-    requestAnimationFrame(() => {
-      if (!listRef.current) return;
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    });
+    // ここまで来たら何かがおかしいので、とりあえず body を返す
+    return "body";
+  }
+
+  async function fetchComments() {
+    try {
+      const col = await detectCommentColumn();
+
+      const { data, error } = await supabase
+        .from("topic_comments")
+        .select(`id,topic_id,created_by,created_at,${col}`)
+        .eq("topic_id", topicId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        alert("コメント取得に失敗: " + error.message);
+        return;
+      }
+
+      // 取得した列名(col)を body に正規化して state に入れる
+      const normalized =
+        (data ?? []).map((row: any) => ({
+          id: row.id,
+          topic_id: row.topic_id,
+          created_by: row.created_by,
+          created_at: row.created_at,
+          body: row[col] ?? "",
+        })) ?? [];
+
+      setComments(normalized);
+    } catch (e: any) {
+      console.error(e);
+      alert("コメント取得に失敗: " + (e?.message ?? "unknown"));
+    }
   }
 
   async function fetchFiles() {
@@ -246,10 +334,11 @@ export default function TopicDetailPage() {
     if (!newBody.trim()) return;
 
     setSending(true);
+    const postedBody = newBody.trim();
 
     const { error } = await supabase.from("topic_comments").insert({
       topic_id: topicId,
-      body: newBody.trim(),
+      body: postedBody,
       created_by: me.shortId,
     });
 
@@ -261,6 +350,17 @@ export default function TopicDetailPage() {
     }
 
     setNewBody("");
+
+    // ✅ ここから追加：コメント投稿成功 → 全員へPush通知
+    await safePushNotify(buildCommentPushPayload(postedBody));
+
+    // ✅ できれば「更新扱い」にもする（topics 一覧の並びが気持ちよくなる）
+    await supabase
+      .from("topics")
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq("id", topicId);
+    // ✅ ここまで追加
+
     fetchComments();
   }
 
@@ -343,6 +443,8 @@ export default function TopicDetailPage() {
 
     setFileBusy(true);
 
+    const postedName = newFileName.trim();
+
     const { error } = await supabase.from("topic_files").insert({
       topic_id: topicId,
       file_name: newFileName.trim(),
@@ -360,6 +462,25 @@ export default function TopicDetailPage() {
     setNewFileName("");
     setNewFileUrl("");
     setShowUrlModal(false);
+    // ✅ ここから追加：ファイルアップロード成功 → 全員へPush通知
+    await safePushNotify(buildFilePushPayload(postedName, "upload"));
+
+    // ✅ できれば「更新扱い」にもする（topics 一覧の並びが気持ちよくなる）
+    await supabase
+      .from("topics")
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq("id", topicId);
+    // ✅ ここまで追加
+    // ✅ ここから追加：URL登録成功 → 全員へPush通知
+    await safePushNotify(buildFilePushPayload(newFileName.trim(), "url"));
+
+    // ✅ 更新扱い（topics 一覧の並び）
+    await supabase
+      .from("topics")
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq("id", topicId);
+    // ✅ ここまで追加
+
     fetchFiles();
   }
 

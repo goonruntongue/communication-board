@@ -210,3 +210,8 @@ body {
         padding: 0.8em 0;
     }
 }
+
+.edit-btn {
+    color: #333 !important;
+    filter: invert();
+}

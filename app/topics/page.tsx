@@ -5,17 +5,17 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import BackButton from "@/components/BackButton";
 import PushEnableButton from "@/components/PushEnableButton";
+
+type Category = { id: string; name: string };
+
 type Topic = {
   id: string;
   title: string;
   created_by: string;
   created_at: string;
-  last_activity_at?: string; // ✅ 追加
-  categories: Category[]; // ✅ 追加（必ず配列で持つ）
+  last_activity_at?: string;
+  categories: Category[];
 };
-
-// ✅ カテゴリ型
-type Category = { id: string; name: string };
 
 export default function TopicsPage() {
   const router = useRouter();
@@ -24,13 +24,14 @@ export default function TopicsPage() {
   const [newTitle, setNewTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ✅ ログイン中ユーザーの短縮ID（katsu / kimi）
+  // ログイン中ユーザーID（katsu / kimi）
   const [myId, setMyId] = useState<string | null>(null);
 
-  // ✅ カテゴリ一覧 & 選択中カテゴリ（フィルタ用）
+  // カテゴリ一覧 & 選択中カテゴリ（フィルタ用）
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  // ✅ カテゴリ削除 UI（管理モード & 確認モーダル）
+
+  // カテゴリ削除 UI
   const [categoryManageMode, setCategoryManageMode] = useState(false);
   const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
   const [deleteCategoryTarget, setDeleteCategoryTarget] =
@@ -40,16 +41,14 @@ export default function TopicsPage() {
     null,
   );
 
-  // ✅ カテゴリ新規作成UI用
+  // カテゴリ新規作成UI用
   const [showCategoryInput, setShowCategoryInput] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryCreating, setCategoryCreating] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  // ✅ 新規作成モーダル用（トピックに付けるカテゴリ）
+  // 新規作成モーダル（トピックに付けるカテゴリ）
   const [createCategoryIds, setCreateCategoryIds] = useState<string[]>([]);
-
-  // ✅ モーダル内カテゴリ新規作成UI用
   const [showModalCategoryInput, setShowModalCategoryInput] = useState(false);
   const [newModalCategoryName, setNewModalCategoryName] = useState("");
   const [modalCategoryCreating, setModalCategoryCreating] = useState(false);
@@ -57,23 +56,22 @@ export default function TopicsPage() {
     null,
   );
 
-  // --- 新規作成モーダル ---
+  // 新規作成モーダル表示
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // --- 削除モーダル ---
+  // 削除モーダル
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Topic | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // ✅ 編集モーダル ---
+  // 編集モーダル
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Topic | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
-  // ✅ 編集モーダル：カテゴリ付け替え用
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
 
   function toggleEditCategory(id: string) {
@@ -88,22 +86,21 @@ export default function TopicsPage() {
     return id;
   };
 
-  // ✅ “更新日時” を返す（無い場合は created_at）
   const activityTime = (t: Topic) => t.last_activity_at ?? t.created_at;
 
-  // ✅ カテゴリ選択トグル
   function toggleCategory(id: string) {
     setSelectedCategoryIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
+
   function toggleCreateCategory(id: string) {
     setCreateCategoryIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
-  // ✅ カテゴリ取得
+  // カテゴリ取得
   async function fetchCategories() {
     const { data, error } = await supabase
       .from("categories")
@@ -112,58 +109,12 @@ export default function TopicsPage() {
 
     if (error) {
       console.error(error);
-      // categories テーブルがまだ無い場合もありえるので alert は出さない
       return;
     }
-
     setCategories((data ?? []) as Category[]);
   }
-  // ✅ カテゴリ削除
-  function openDeleteCategoryModal(category: Category) {
-    setDeleteCategoryTarget(category);
-    setDeleteCategoryError(null);
-    setShowDeleteCategoryModal(true);
-  }
 
-  async function createCategory() {
-    const name = newCategoryName.trim();
-    if (!name) return;
-
-    setCategoryCreating(true);
-    setCategoryError(null);
-
-    const { error } = await supabase.from("categories").insert({ name });
-
-    setCategoryCreating(false);
-
-    if (error) {
-      // unique制約がある想定：同名カテゴリはエラーになる
-      setCategoryError("作成できませんでした: " + error.message);
-      return;
-    }
-
-    setNewCategoryName("");
-    setShowCategoryInput(false);
-    fetchCategories();
-  }
-
-  // 初回：ログイン中ユーザーID取得 → トピック一覧取得 → カテゴリ取得
-  useEffect(() => {
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const id = user?.email?.split("@")[0] ?? null; // katsu / kimi
-      setMyId(id);
-
-      fetchTopics();
-      fetchCategories(); // ✅ 追加
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ✅ 一覧を「最新更新が上」にする
+  // topics取得（更新が上）
   async function fetchTopics() {
     setLoading(true);
 
@@ -171,11 +122,11 @@ export default function TopicsPage() {
       .from("topics")
       .select(
         `
-      id,title,created_by,created_at,last_activity_at,
-      topic_categories(
-        categories(id,name)
-      )
-    `,
+        id,title,created_by,created_at,last_activity_at,
+        topic_categories(
+          categories(id,name)
+        )
+      `,
       )
       .order("last_activity_at", { ascending: false });
 
@@ -201,27 +152,41 @@ export default function TopicsPage() {
     setLoading(false);
   }
 
-  // ✅ 画面復帰時にも最新に（詳細→戻る等）
+  // 初回ロード：user -> topics -> categories
+  useEffect(() => {
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const id = user?.email?.split("@")[0] ?? null;
+      setMyId(id);
+
+      await fetchTopics();
+      await fetchCategories();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 画面復帰時も更新
   useEffect(() => {
     const onFocus = () => {
       fetchTopics();
-      fetchCategories(); // ✅ ついでにカテゴリも更新
+      fetchCategories();
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Realtimeで topics 変更が来たら更新（あると気持ちいい）
+  // Realtime（topics）
   useEffect(() => {
     const ch = supabase
       .channel("topics-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "topics" },
-        () => {
-          fetchTopics();
-        },
+        () => fetchTopics(),
       )
       .subscribe();
 
@@ -231,25 +196,39 @@ export default function TopicsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 新規トピック作成
+  // --- Push送信用ユーティリティ（失敗してもUIを壊さない） ---
+  async function sendPush(payload: {
+    title: string;
+    message: string;
+    url: string;
+  }) {
+    try {
+      await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      console.error("push send failed", e);
+    }
+  }
+
+  // トピック作成
   async function createTopic() {
-    if (!newTitle.trim()) return;
+    const titleRaw = newTitle.trim();
+    if (!titleRaw) return;
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
     if (!user) return;
 
     const created_by = user.email?.split("@")[0] ?? "unknown";
 
-    // 1) topics を作成して id を受け取る
+    // 1) topics insert
     const { data: inserted, error: e1 } = await supabase
       .from("topics")
-      .insert({
-        title: newTitle.trim(),
-        created_by,
-      })
+      .insert({ title: titleRaw, created_by })
       .select("id")
       .single();
 
@@ -258,86 +237,59 @@ export default function TopicsPage() {
       return;
     }
 
-    // 2) 選択カテゴリがあれば topic_categories に保存
+    // 2) topic_categories insert
     if (createCategoryIds.length > 0) {
       const rows = createCategoryIds.map((cid) => ({
         topic_id: inserted.id,
         category_id: cid,
       }));
-
       const { error: e2 } = await supabase
         .from("topic_categories")
         .insert(rows);
-
       if (e2) {
         alert("カテゴリ紐付けに失敗: " + e2.message);
-        // topics自体は作成済みなので、ここでreturnしてもOK（今回はreturn）
         return;
       }
     }
 
+    // UI更新（先に閉じる）
     setNewTitle("");
-    setCreateCategoryIds([]); // ✅ リセット
+    setCreateCategoryIds([]);
     setShowCreateModal(false);
-    // ✅ トピック作成成功 → 全員へPush通知
-    await fetch("/api/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: "新しいトピックが作成されました",
-        message: `「${newTitle.trim()}」`,
-        url: "/topics", // ここを `/topics/${inserted.id}` にしてもOK
-      }),
+
+    // ✅ トピック作成成功 → 全員へPush
+    await sendPush({
+      title: "新しいトピックが作成されました",
+      message: `「${titleRaw}」`,
+      url: `/topics/${inserted.id}`, // ここは /topics でもOK
     });
+
     fetchTopics();
   }
 
-  // ✅ カテゴリ削除
-  async function confirmDeleteCategory() {
-    if (!deleteCategoryTarget) return;
+  // カテゴリ作成（外側）
+  async function createCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
 
-    setDeleteCategoryLoading(true);
-    setDeleteCategoryError(null);
+    setCategoryCreating(true);
+    setCategoryError(null);
 
-    const categoryId = deleteCategoryTarget.id;
+    const { error } = await supabase.from("categories").insert({ name });
 
-    // 1) 中間テーブルから先に削除（FKがある場合ここが必須）
-    const { error: e1 } = await supabase
-      .from("topic_categories")
-      .delete()
-      .eq("category_id", categoryId);
+    setCategoryCreating(false);
 
-    if (e1) {
-      setDeleteCategoryLoading(false);
-      setDeleteCategoryError("紐付け削除に失敗: " + e1.message);
+    if (error) {
+      setCategoryError("作成できませんでした: " + error.message);
       return;
     }
 
-    // 2) categories から削除
-    const { error: e2 } = await supabase
-      .from("categories")
-      .delete()
-      .eq("id", categoryId);
-
-    setDeleteCategoryLoading(false);
-
-    if (e2) {
-      setDeleteCategoryError("カテゴリ削除に失敗: " + e2.message);
-      return;
-    }
-
-    // 3) UI側の選択状態も整合させる
-    setSelectedCategoryIds((prev) => prev.filter((x) => x !== categoryId));
-    setCreateCategoryIds((prev) => prev.filter((x) => x !== categoryId));
-
-    setShowDeleteCategoryModal(false);
-    setDeleteCategoryTarget(null);
-
-    // 4) 再取得
+    setNewCategoryName("");
+    setShowCategoryInput(false);
     fetchCategories();
-    fetchTopics();
   }
 
+  // モーダル内：カテゴリ作成
   async function createCategoryInModal() {
     const name = newModalCategoryName.trim();
     if (!name) return;
@@ -345,7 +297,6 @@ export default function TopicsPage() {
     setModalCategoryCreating(true);
     setModalCategoryError(null);
 
-    // 1) categories に insert（id も欲しいので select）
     const { data: inserted, error } = await supabase
       .from("categories")
       .insert({ name })
@@ -359,20 +310,63 @@ export default function TopicsPage() {
       return;
     }
 
-    // 2) カテゴリ一覧を更新
     await fetchCategories();
-
-    // 3) 作成したカテゴリを自動で選択状態にする
     setCreateCategoryIds((prev) =>
       prev.includes(inserted.id) ? prev : [...prev, inserted.id],
     );
-
-    // 4) 入力を閉じる
     setNewModalCategoryName("");
     setShowModalCategoryInput(false);
   }
 
-  // ✅ HOT 判定：3日以内＆最新2件
+  // カテゴリ削除
+  function openDeleteCategoryModal(category: Category) {
+    setDeleteCategoryTarget(category);
+    setDeleteCategoryError(null);
+    setShowDeleteCategoryModal(true);
+  }
+
+  async function confirmDeleteCategory() {
+    if (!deleteCategoryTarget) return;
+
+    setDeleteCategoryLoading(true);
+    setDeleteCategoryError(null);
+
+    const categoryId = deleteCategoryTarget.id;
+
+    const { error: e1 } = await supabase
+      .from("topic_categories")
+      .delete()
+      .eq("category_id", categoryId);
+
+    if (e1) {
+      setDeleteCategoryLoading(false);
+      setDeleteCategoryError("紐付け削除に失敗: " + e1.message);
+      return;
+    }
+
+    const { error: e2 } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", categoryId);
+
+    setDeleteCategoryLoading(false);
+
+    if (e2) {
+      setDeleteCategoryError("カテゴリ削除に失敗: " + e2.message);
+      return;
+    }
+
+    setSelectedCategoryIds((prev) => prev.filter((x) => x !== categoryId));
+    setCreateCategoryIds((prev) => prev.filter((x) => x !== categoryId));
+
+    setShowDeleteCategoryModal(false);
+    setDeleteCategoryTarget(null);
+
+    fetchCategories();
+    fetchTopics();
+  }
+
+  // HOT判定
   const hotIds = useMemo(() => {
     const now = Date.now();
     const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
@@ -394,9 +388,7 @@ export default function TopicsPage() {
     return ids;
   }, [topics]);
 
-  // ✅ フィルタ適用した topics を作る（現段階では Topic に categories が無いので“仮”）
-  // まずUIだけ動かすため、今は selectedCategoryIds が空なら全件表示。
-  // 実データの紐付けを入れた段階で、ここを本フィルタにします。
+  // フィルタ
   const filteredTopics = useMemo(() => {
     if (selectedCategoryIds.length === 0) return topics;
 
@@ -406,8 +398,7 @@ export default function TopicsPage() {
     });
   }, [topics, selectedCategoryIds]);
 
-  // 日付グループ化（✅ “更新日” 基準に変更）
-  // ✅ JST基準で YYYY.MM.DD を作る
+  // JST日付
   const formatDateJST = (iso: string) => {
     const d = new Date(iso);
     const y = d.toLocaleDateString("ja-JP", {
@@ -433,7 +424,6 @@ export default function TopicsPage() {
       groups[date].push(topic);
     });
 
-    // 各グループ内も更新降順に
     Object.keys(groups).forEach((k) => {
       groups[k].sort(
         (a, b) =>
@@ -445,7 +435,6 @@ export default function TopicsPage() {
     return groups;
   };
 
-  // ✅ grouped は filteredTopics から作る（ここが“絞り込み反映”ポイント）
   const grouped = useMemo(() => groupByDate(filteredTopics), [filteredTopics]);
 
   function openDeleteModal(topic: Topic) {
@@ -515,7 +504,7 @@ export default function TopicsPage() {
     fetchTopics();
   }
 
-  // ✅ 更新処理（タイトル変更→ topics が更新されるので last_activity_at も更新される）
+  // タイトル更新 + カテゴリ同期
   async function confirmEdit() {
     if (!editTarget) return;
 
@@ -528,7 +517,6 @@ export default function TopicsPage() {
     setEditLoading(true);
     setEditError(null);
 
-    // ✅ 1) topics を更新（カテゴリ変更だけでも更新扱いにしたいので last_activity_at も更新）
     const { data: updated, error: e1 } = await supabase
       .from("topics")
       .update({
@@ -540,7 +528,6 @@ export default function TopicsPage() {
 
     if (e1) {
       setEditLoading(false);
-      console.error(e1);
       setEditError("更新できませんでした: " + e1.message);
       return;
     }
@@ -553,8 +540,6 @@ export default function TopicsPage() {
       return;
     }
 
-    // ✅ 2) topic_categories を同期（いったん全削除 → 選択分を再insert）
-    //    （FK/RLSがあるなら、この順が一番事故りにくい）
     const topicId = editTarget.id;
 
     const { error: e2 } = await supabase
@@ -564,7 +549,6 @@ export default function TopicsPage() {
 
     if (e2) {
       setEditLoading(false);
-      console.error(e2);
       setEditError("カテゴリの付け替え（既存削除）に失敗: " + e2.message);
       return;
     }
@@ -574,20 +558,16 @@ export default function TopicsPage() {
         topic_id: topicId,
         category_id: cid,
       }));
-
       const { error: e3 } = await supabase
         .from("topic_categories")
         .insert(rows);
-
       if (e3) {
         setEditLoading(false);
-        console.error(e3);
         setEditError("カテゴリの付け替え（再登録）に失敗: " + e3.message);
         return;
       }
     }
 
-    // ✅ 3) 後処理
     setEditLoading(false);
     setShowEditModal(false);
     setEditTarget(null);
@@ -595,7 +575,6 @@ export default function TopicsPage() {
     setEditCategoryIds([]);
     setEditError(null);
 
-    // ✅ 並び替え・カテゴリ表示にも効かせる
     fetchTopics();
   }
 
@@ -610,7 +589,7 @@ export default function TopicsPage() {
         </div>
       </header>
 
-      {/* ✅ カテゴリチップUI（ここから追加） */}
+      {/* カテゴリUI */}
       <div className="list-wrap" style={{ marginTop: 10 }}>
         <div
           style={{
@@ -625,7 +604,6 @@ export default function TopicsPage() {
               カテゴリー
             </div>
 
-            {/* 何も選んでない＝全件 */}
             <button
               type="button"
               onClick={() => setSelectedCategoryIds([])}
@@ -642,7 +620,7 @@ export default function TopicsPage() {
             >
               すべて
             </button>
-            {/* ✅ カテゴリ管理モード切替 */}
+
             <button
               type="button"
               onClick={() => setCategoryManageMode((v) => !v)}
@@ -660,7 +638,6 @@ export default function TopicsPage() {
               {categoryManageMode ? "管理中" : "管理"}
             </button>
 
-            {/* ✅ カテゴリ追加ボタン */}
             <button
               type="button"
               onClick={() => {
@@ -686,7 +663,7 @@ export default function TopicsPage() {
               {showCategoryInput ? "−" : "+"}
             </button>
           </div>
-          {/* ✅ カテゴリ新規作成入力 */}
+
           {showCategoryInput && (
             <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
               <input
@@ -732,12 +709,7 @@ export default function TopicsPage() {
           )}
 
           <div
-            style={{
-              marginTop: 10,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-            }}
+            style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}
           >
             {categories.length === 0 && (
               <div style={{ fontSize: 12, color: "#666" }}>
@@ -747,7 +719,6 @@ export default function TopicsPage() {
 
             {categories.map((c) => {
               const active = selectedCategoryIds.includes(c.id);
-
               return (
                 <button
                   key={c.id}
@@ -765,17 +736,15 @@ export default function TopicsPage() {
                     alignItems: "center",
                     gap: 6,
                   }}
-                  title="クリックで絞り込み（複数選択可）"
                 >
                   <span>{c.name}</span>
 
-                  {/* ✅ 管理モード時だけ削除ボタン */}
                   {categoryManageMode && (
                     <span
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
-                        e.stopPropagation(); // ✅ 絞り込みクリックを止める
+                        e.stopPropagation();
                         openDeleteCategoryModal(c);
                       }}
                       onKeyDown={(e) => {
@@ -812,7 +781,7 @@ export default function TopicsPage() {
           )}
         </div>
 
-        {/* ✅ トピック一覧 */}
+        {/* トピック一覧 */}
         <div
           style={{
             background: "#ccc",
@@ -882,7 +851,7 @@ export default function TopicsPage() {
                             {displayName(topic.created_by)}
                           </span>
                         </span>
-                        {/* ✅ Categories */}
+
                         {topic.categories?.map((c) => (
                           <span
                             key={c.id}
@@ -899,7 +868,7 @@ export default function TopicsPage() {
                             {c.name}
                           </span>
                         ))}
-                        {/* ✅ HOT */}
+
                         {hotIds.has(topic.id) && (
                           <span
                             style={{
@@ -919,14 +888,9 @@ export default function TopicsPage() {
                     </div>
 
                     <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
                       className="btns-wrap"
                     >
-                      {/* ✅ 編集は誰でもOK：常に表示 */}
                       <button
                         className="edit-btn"
                         type="button"
@@ -945,16 +909,10 @@ export default function TopicsPage() {
                         <img
                           src="/images/edit-icon.svg"
                           alt=""
-                          style={{
-                            width: 16,
-                            height: 16,
-                            opacity: 0.9,
-                            filter: "invert(0)",
-                          }}
+                          style={{ width: 16, height: 16, opacity: 0.9 }}
                         />
                       </button>
 
-                      {/* ✅ 削除は作成者のみ：今まで通り */}
                       {myId === topic.created_by && (
                         <button
                           type="button"
@@ -990,9 +948,9 @@ export default function TopicsPage() {
       <button
         onClick={() => {
           setCreateCategoryIds([]);
-          setShowModalCategoryInput(false); // ✅ 追加
-          setNewModalCategoryName(""); // ✅ 追加
-          setModalCategoryError(null); // ✅ 追加
+          setShowModalCategoryInput(false);
+          setNewModalCategoryName("");
+          setModalCategoryError(null);
           setShowCreateModal(true);
         }}
         style={{
@@ -1047,7 +1005,8 @@ export default function TopicsPage() {
                 padding: "0 10px",
               }}
             />
-            {/* ✅ カテゴリ選択（複数可） */}
+
+            {/* カテゴリ選択 */}
             <div style={{ marginTop: 12 }}>
               <div
                 style={{
@@ -1089,7 +1048,6 @@ export default function TopicsPage() {
                 </button>
               </div>
 
-              {/* ✅ モーダル内：カテゴリ新規作成入力 */}
               {showModalCategoryInput && (
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <input
@@ -1217,7 +1175,7 @@ export default function TopicsPage() {
               style={{ width: "100%", height: 40, padding: "0 10px" }}
               disabled={editLoading}
             />
-            {/* ✅ 編集モーダル：カテゴリ付け替え（複数可） */}
+
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
                 カテゴリー（複数選択）
@@ -1375,7 +1333,8 @@ export default function TopicsPage() {
           </div>
         </div>
       )}
-      {/* ✅ カテゴリ削除モーダル */}
+
+      {/* カテゴリ削除モーダル */}
       {showDeleteCategoryModal && (
         <div
           style={{
