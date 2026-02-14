@@ -96,7 +96,7 @@ export default function RegisterSW() {
   // ✅ デバッグ用にwindowへ生やしておく（次ステップでボタンにします）
   useEffect(() => {
     (window as any).__subscribePush = subscribePush;
-  }, [ready]);
+  }, [ready, shortId]);
 
   return null;
 }
