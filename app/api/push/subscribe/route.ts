@@ -1,19 +1,22 @@
+// app/api/push/subscribe/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // ✅ サーバ専用
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } },
 );
 
 export async function POST(req: Request) {
   try {
+    // ✅ 1) 先にJSONを読む（これが最優先）
     const sub = await req.json();
 
+    // ✅ 2) user_short_id を取り出す
     const user_short_id = (sub?.user_short_id ?? sub?.userShortId ?? "")
       .toString()
-      .trim(); // ← 追加
+      .trim();
 
     const endpoint = sub?.endpoint;
     const p256dh = sub?.keys?.p256dh;
@@ -26,13 +29,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ endpoint をユニークキーとして保存（同じ端末なら上書き）
-    const { error } = await supabaseAdmin
-      .from("push_subscriptions")
-      .upsert(
-        { endpoint, p256dh, auth, user_short_id: user_short_id || null },
-        { onConflict: "endpoint" },
-      );
+    // ✅ 3) upsert（endpoint重複なら更新）
+    const { error } = await supabaseAdmin.from("push_subscriptions").upsert(
+      {
+        endpoint,
+        p256dh,
+        auth,
+        user_short_id: user_short_id || null,
+      },
+      { onConflict: "endpoint" },
+    );
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

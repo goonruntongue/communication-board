@@ -47,6 +47,11 @@ export default function RegisterSW() {
 
   // ✅ ここが「ユーザー操作で呼ぶ」購読関数
   async function subscribePush() {
+    if (!shortId) {
+      console.warn("shortId is empty. wait for auth user.");
+      return;
+    }
+
     if (!ready) return;
     if (!("PushManager" in window)) return;
 
