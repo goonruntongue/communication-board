@@ -10,17 +10,16 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    // 1) JSONを読む
     const sub = await req.json();
-
-    // 2) user_short_id を取り出す（snake/camel両対応）
-    const user_short_id = (sub?.user_short_id ?? sub?.userShortId ?? "")
-      .toString()
-      .trim();
 
     const endpoint = sub?.endpoint;
     const p256dh = sub?.keys?.p256dh;
     const auth = sub?.keys?.auth;
+
+    // ✅ user_short_id は任意（来た時だけ反映させる）
+    const incomingShortId = (sub?.user_short_id ?? sub?.userShortId ?? "")
+      .toString()
+      .trim();
 
     if (!endpoint || !p256dh || !auth) {
       return NextResponse.json(
@@ -29,12 +28,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ 3) upsert payload を条件付きにする
-    //    user_short_id が空のときは payload に含めない（= 既存の値を null で上書きしない）
-    const payload: Record<string, any> = { endpoint, p256dh, auth };
-    if (user_short_id) {
-      payload.user_short_id = user_short_id;
-    }
+    // ✅ 「null で上書き」しないため、user_short_id はある時だけ payload に含める
+    const payload: any = { endpoint, p256dh, auth };
+    if (incomingShortId) payload.user_short_id = incomingShortId;
 
     const { error } = await supabaseAdmin
       .from("push_subscriptions")

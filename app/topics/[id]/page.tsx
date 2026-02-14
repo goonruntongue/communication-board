@@ -286,7 +286,6 @@ export default function TopicDetailPage() {
           filter: `id=eq.${topicId}`,
         },
         async () => {
-          // 重くしたくないので topic だけ取り直す
           const { data } = await supabase
             .from("topics")
             .select("*")
@@ -319,7 +318,6 @@ export default function TopicDetailPage() {
     const session = sessionData.session;
     const user = session?.user;
 
-    // ✅ TS対策：email を先に変数へ退避しガード
     const email = user?.email ?? "";
     if (!user || !email) {
       setLoading(false);
@@ -379,8 +377,30 @@ export default function TopicDetailPage() {
     setFiles(data ?? []);
   }
 
+  // ✅ me が無い/消えるケースでも安定させる（投稿・アップロードの前に必ず呼ぶ）
+  async function ensureMe() {
+    if (me?.shortId) return me;
+
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return null;
+
+    const email = data.session?.user?.email ?? "";
+    if (!email) return null;
+
+    const shortId = email.split("@")[0] ?? "";
+    if (!shortId) return null;
+
+    const next = { email, userId: data.session!.user.id, shortId };
+    setMe(next);
+    return next;
+  }
+
   async function sendComment() {
-    if (!me) return;
+    const ensured = await ensureMe();
+    if (!ensured) {
+      alert("ログイン情報が取れませんでした。再ログインしてください。");
+      return;
+    }
     if (!newBody.trim()) return;
 
     setSending(true);
@@ -389,11 +409,10 @@ export default function TopicDetailPage() {
     const { error } = await supabase.from("topic_comments").insert({
       topic_id: topicId,
       body: postedBody,
-      created_by: me.shortId,
+      created_by: ensured.shortId,
     });
 
     setSending(false);
-
     if (error) {
       alert(error.message);
       return;
@@ -401,13 +420,11 @@ export default function TopicDetailPage() {
 
     setNewBody("");
 
-    // ✅ コメント投稿成功 → 自分以外の全員へPush通知
     await safePushNotify({
       ...buildCommentPushPayload(postedBody),
-      actor: me.shortId,
+      actor: ensured.shortId,
     });
 
-    // ✅ 更新扱い（topics 一覧の並び）
     await supabase
       .from("topics")
       .update({ last_activity_at: new Date().toISOString() })
@@ -487,47 +504,65 @@ export default function TopicDetailPage() {
     setEditError(null);
   }
 
-  // URL登録でファイルを増やす
+  // ✅ URL登録でファイルを増やす（運用版：致命点だけ確実に潰す）
   async function addFileByUrl() {
-    if (!me) return;
-    if (!newFileName.trim() || !newFileUrl.trim()) return;
+    if (fileBusy) return;
 
-    const postedName = newFileName.trim();
-    const postedUrl = newFileUrl.trim();
-
-    setFileBusy(true);
-
-    const { error } = await supabase.from("topic_files").insert({
-      topic_id: topicId,
-      file_name: postedName,
-      file_url: postedUrl,
-      created_by: me.shortId,
-    });
-
-    setFileBusy(false);
-
-    if (error) {
-      alert(error.message);
+    const ensured = await ensureMe();
+    if (!ensured) {
+      alert("ログイン情報が取れませんでした。再ログインしてください。");
       return;
     }
 
-    setNewFileName("");
-    setNewFileUrl("");
-    setShowUrlModal(false);
+    const postedName = newFileName.trim();
+    const rawUrl = newFileUrl.trim();
+    if (!postedName || !rawUrl) return;
 
-    // ✅ URL登録成功 → 自分以外へPush（actor付き）
-    await safePushNotify({
-      ...buildFilePushPayload(postedName, "url"),
-      actor: me.shortId,
-    });
+    // ✅ URLを軽く正規化（https://無し入力対応）
+    let postedUrl = rawUrl;
+    if (!/^https?:\/\//i.test(postedUrl)) postedUrl = "https://" + postedUrl;
 
-    // ✅ 更新扱い（topics 一覧の並び）
-    await supabase
-      .from("topics")
-      .update({ last_activity_at: new Date().toISOString() })
-      .eq("id", topicId);
+    // ✅ URL妥当性チェック
+    try {
+      new URL(postedUrl);
+    } catch {
+      alert("URLの形式が正しくありません（例: https://example.com ）");
+      return;
+    }
 
-    fetchFiles();
+    setFileBusy(true);
+    try {
+      const { error } = await supabase.from("topic_files").insert({
+        topic_id: topicId,
+        file_name: postedName,
+        file_url: postedUrl,
+        created_by: ensured.shortId,
+        // stored_name は入れない（= URL追加扱い）
+      });
+
+      if (error) {
+        alert("URL登録に失敗: " + error.message);
+        return;
+      }
+
+      setNewFileName("");
+      setNewFileUrl("");
+      setShowUrlModal(false);
+
+      await supabase
+        .from("topics")
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq("id", topicId);
+
+      await safePushNotify({
+        ...buildFilePushPayload(postedName, "url"),
+        actor: ensured.shortId,
+      });
+
+      fetchFiles();
+    } finally {
+      setFileBusy(false);
+    }
   }
 
   async function deleteFile(fileId: string) {
@@ -581,7 +616,13 @@ export default function TopicDetailPage() {
   }
 
   async function handlePickedFile(file: File) {
-    if (!me) return;
+    if (fileBusy) return;
+
+    const ensured = await ensureMe();
+    if (!ensured) {
+      alert("ログイン情報が取得できません。再ログインしてください。");
+      return;
+    }
 
     try {
       setFileBusy(true);
@@ -643,7 +684,7 @@ export default function TopicDetailPage() {
         file_name: originalNameFromServer,
         file_url: fileUrl,
         stored_name: storedName,
-        created_by: me.shortId,
+        created_by: ensured.shortId,
       });
 
       if (error) {
@@ -651,13 +692,11 @@ export default function TopicDetailPage() {
         return;
       }
 
-      // ✅ アップロード成功 → 自分以外へPush（actor付き）
       await safePushNotify({
         ...buildFilePushPayload(originalNameFromServer, "upload"),
-        actor: me.shortId,
+        actor: ensured.shortId,
       });
 
-      // ✅ 更新扱い（topics 一覧の並び）
       await supabase
         .from("topics")
         .update({ last_activity_at: new Date().toISOString() })
@@ -696,13 +735,9 @@ export default function TopicDetailPage() {
 
   // ✅ 送信キー制御：PC=Enter送信/Shift+Enter改行、スマホ=Enter改行
   function onKeyDownSend(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // IME変換中（日本語入力中）にEnterで送信しない
     if ((e.nativeEvent as any).isComposing) return;
-
-    // ✅ スマホ：Enterは改行（送信しない）
     if (isMobile) return;
 
-    // ✅ PC：Enterで送信 / Shift+Enterで改行
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendComment();
@@ -870,7 +905,6 @@ export default function TopicDetailPage() {
                       <div
                         style={{ marginLeft: "auto", display: "flex", gap: 6 }}
                       >
-                        {/* 編集 */}
                         <button
                           className="edit-btn"
                           onClick={(e) => {
@@ -893,7 +927,6 @@ export default function TopicDetailPage() {
                           />
                         </button>
 
-                        {/* 削除 */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -922,8 +955,8 @@ export default function TopicDetailPage() {
                     style={{
                       fontSize: 13,
                       lineHeight: 1.5,
-                      whiteSpace: "pre-wrap", // ✅ 改行を表示に反映
-                      wordBreak: "break-word", // ✅ 長文のはみ出し保険（レイアウト崩れ防止）
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
                     }}
                   >
                     {c.body}
@@ -1015,7 +1048,6 @@ export default function TopicDetailPage() {
                       key={f.id}
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
-                      {/* ✅ ファイル名クリックでプレビュー */}
                       <div
                         className="fileTitle"
                         onClick={() => openPreview(f)}
@@ -1056,7 +1088,6 @@ export default function TopicDetailPage() {
                         </div>
                       </div>
 
-                      {/* ✅ 右側アイコン列：編集 / DL（アップロードのみ） / 削除（自分のみ） */}
                       <div
                         style={{
                           display: "flex",
@@ -1064,7 +1095,6 @@ export default function TopicDetailPage() {
                           gap: 8,
                         }}
                       >
-                        {/* ✅ 編集（自分のだけ） */}
                         {me?.shortId === f.created_by && (
                           <button
                             onClick={(e) => {
@@ -1090,7 +1120,6 @@ export default function TopicDetailPage() {
                           </button>
                         )}
 
-                        {/* ✅ ダウンロード（アップロードのみ表示：URL追加は非表示） */}
                         {!isUrlAdded(f) && (
                           <button
                             onClick={(e) => {
@@ -1116,7 +1145,6 @@ export default function TopicDetailPage() {
                           </button>
                         )}
 
-                        {/* ✅ 削除（自分のファイルだけ） */}
                         {me?.shortId === f.created_by && (
                           <button
                             onClick={(e) => {
@@ -1390,7 +1418,7 @@ export default function TopicDetailPage() {
         </div>
       )}
 
-      {/* URL追加モーダル（あなたのまま） */}
+      {/* URL追加モーダル */}
       {showUrlModal && (
         <div
           style={{
@@ -1401,7 +1429,9 @@ export default function TopicDetailPage() {
             placeItems: "center",
             zIndex: 10,
           }}
-          onClick={() => setShowUrlModal(false)}
+          onClick={() => {
+            if (!fileBusy) setShowUrlModal(false);
+          }}
         >
           <div
             style={{
@@ -1420,12 +1450,14 @@ export default function TopicDetailPage() {
                 onChange={(e) => setNewFileName(e.target.value)}
                 placeholder="表示名（例: app01）"
                 style={{ height: 40, padding: "0 10px" }}
+                disabled={fileBusy}
               />
               <input
                 value={newFileUrl}
                 onChange={(e) => setNewFileUrl(e.target.value)}
                 placeholder="URL（https://...）"
                 style={{ height: 40, padding: "0 10px" }}
+                disabled={fileBusy}
               />
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 ※ URL追加のリンク先が download.php ではない場合、
@@ -1441,7 +1473,12 @@ export default function TopicDetailPage() {
                 marginTop: 14,
               }}
             >
-              <button onClick={() => setShowUrlModal(false)}>キャンセル</button>
+              <button
+                onClick={() => setShowUrlModal(false)}
+                disabled={fileBusy}
+              >
+                キャンセル
+              </button>
               <button
                 onClick={addFileByUrl}
                 disabled={fileBusy || !newFileName.trim() || !newFileUrl.trim()}

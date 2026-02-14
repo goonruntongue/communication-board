@@ -123,23 +123,23 @@ export default function PushEnableButton() {
       <button
         type="button"
         onClick={enable}
-        disabled={busy || permission === "granted"}
+        disabled={busy}
         style={{
           height: 34,
           padding: "0 12px",
           borderRadius: 10,
           border: "1px solid #bbb",
-          background: permission === "granted" ? "#444" : "#111",
+          background: "#111",
           color: "#fff",
           cursor: busy ? "wait" : "pointer",
           opacity: busy ? 0.6 : 1,
           fontSize: 13,
         }}
       >
-        {permission === "granted"
-          ? "通知は有効です"
-          : busy
-            ? "処理中..."
+        {busy
+          ? "処理中..."
+          : permission === "granted"
+            ? "通知を再登録"
             : "通知を有効化"}
       </button>
 
