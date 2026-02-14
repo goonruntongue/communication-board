@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Communication Board",
     short_name: "Communication Board",
     description: "Communication Board PWA",
-    start_url: "/",
+    start_url: "/topics",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#111111",

@@ -289,14 +289,15 @@ export default function TopicDetailPage() {
   async function init() {
     setLoading(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
 
-    if (!user?.email) {
+    if (!session?.user?.email) {
       router.push("/login");
       return;
     }
+
+    const user = session.user;
 
     const shortId = user.email.split("@")[0] ?? "unknown";
     setMe({ email: user.email, userId: user.id, shortId });
