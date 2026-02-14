@@ -49,9 +49,7 @@ export default function TopicDetailPage() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [newBody, setNewBody] = useState("");
   const [sending, setSending] = useState(false);
-
-  // ✅ スマホ判定（Enterで送信しない用）
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // ← 追加
 
   // ✅ コメント編集モーダル
   const [showEditCommentModal, setShowEditCommentModal] = useState(false);
@@ -83,20 +81,6 @@ export default function TopicDetailPage() {
 
   // Drag UI
   const [dragOver, setDragOver] = useState(false);
-
-  // ✅ スマホ/タブレット寄り判定（Enter送信を止める）
-  useEffect(() => {
-    const coarse =
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(pointer: coarse)").matches;
-
-    const ua =
-      typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
-    const byUA = /iphone|ipad|ipod|android/.test(ua);
-
-    setIsMobile(coarse || byUA);
-  }, []);
 
   const displayName = (id: string) => {
     if (id === "katsu") return "Fanio";
@@ -234,6 +218,20 @@ export default function TopicDetailPage() {
     setEditFileName("");
     setEditFileError(null);
   }
+  useEffect(() => {
+    // タッチ端末寄り（スマホ/タブレット）を判定
+    const coarse =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(pointer: coarse)").matches;
+
+    const ua =
+      typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+
+    const byUA = /iphone|ipad|ipod|android/.test(ua);
+
+    setIsMobile(coarse || byUA);
+  }, []);
 
   // ✅ 初期ロード
   useEffect(() => {
@@ -694,12 +692,11 @@ export default function TopicDetailPage() {
     e.target.value = "";
   }
 
-  // ✅ 送信キー制御：PC=Enter送信/Shift+Enter改行、スマホ=Enter改行
   function onKeyDownSend(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     // IME変換中（日本語入力中）にEnterで送信しない
     if ((e.nativeEvent as any).isComposing) return;
 
-    // ✅ スマホ：Enterは改行（送信しない）
+    // ✅ スマホ：Enterで改行（送信しない）
     if (isMobile) return;
 
     // ✅ PC：Enterで送信 / Shift+Enterで改行
@@ -918,16 +915,7 @@ export default function TopicDetailPage() {
                     )}
                   </div>
 
-                  <div
-                    style={{
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      whiteSpace: "pre-wrap", // ✅ 改行を表示に反映
-                      wordBreak: "break-word", // ✅ 長文のはみ出し保険（レイアウト崩れ防止）
-                    }}
-                  >
-                    {c.body}
-                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.5 }}>{c.body}</div>
                 </div>
               ))}
             </div>
