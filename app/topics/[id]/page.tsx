@@ -302,7 +302,7 @@ export default function TopicDetailPage() {
     const session = sessionData.session;
     const user = session?.user;
 
-    // ✅ TS対策：email を先に変数へ退避してガード
+    // ✅ TS対策：email を先に変数へ退避しガード
     const email = user?.email ?? "";
     if (!user || !email) {
       setLoading(false);
