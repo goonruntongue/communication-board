@@ -201,6 +201,7 @@ export default function TopicsPage() {
     title: string;
     message: string;
     url: string;
+    actor?: string; // ✅ 自分除外用
   }) {
     try {
       await fetch("/api/push/send", {
@@ -262,6 +263,7 @@ export default function TopicsPage() {
       title: "新しいトピックが作成されました",
       message: `「${titleRaw}」`,
       url: `/topics/${inserted.id}`, // ここは /topics でもOK
+      actor: created_by, // ✅ 追加
     });
 
     fetchTopics();

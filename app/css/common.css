@@ -155,6 +155,11 @@ body {
     color: #000 !important;
 }
 
+.goto-topic .edit-btn {
+    color: #333 !important;
+    filter: invert();
+}
+
 .edit-btn:hover,
 .del-btn:hover {
     filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(500%) hue-rotate(5deg);
@@ -209,9 +214,4 @@ body {
     .goto-topic {
         padding: 0.8em 0;
     }
-}
-
-.edit-btn {
-    color: #333 !important;
-    filter: invert();
 }

@@ -14,6 +14,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function RegisterSW() {
   const [ready, setReady] = useState(false);
+  const [shortId, setShortId] = useState<string>("");
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -24,6 +25,24 @@ export default function RegisterSW() {
         setReady(true);
       })
       .catch(console.error);
+  }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        // ここはあなたのプロジェクトのsupabaseClientを使う想定
+        // すでに他ページで使っているなら同じ import を追加してください
+        const { supabase } = await import("@/lib/supabaseClient");
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const sid = user?.email?.split("@")[0] ?? "";
+        setShortId(sid);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, []);
 
   // ✅ ここが「ユーザー操作で呼ぶ」購読関数
@@ -54,7 +73,11 @@ export default function RegisterSW() {
     const res = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sub),
+      body: JSON.stringify({
+        ...sub.toJSON(),
+        user_short_id: shortId || null, // snake_case
+        userShortId: shortId || null, // camelCaseも保険
+      }),
     });
 
     if (!res.ok) {

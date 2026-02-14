@@ -1,5 +1,5 @@
 "use client";
-
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -66,7 +66,7 @@ export default function TopicDetailPage() {
   const [newFileUrl, setNewFileUrl] = useState("");
   const [fileBusy, setFileBusy] = useState(false);
 
-  // ✅ ファイル名編集モーダル（新規）
+  // ✅ ファイル名編集モーダル
   const [showEditFileModal, setShowEditFileModal] = useState(false);
   const [editTargetFile, setEditTargetFile] = useState<FileRow | null>(null);
   const [editFileName, setEditFileName] = useState("");
@@ -90,14 +90,13 @@ export default function TopicDetailPage() {
   const headerTitle = useMemo(() => topic?.title ?? "Data", [topic]);
 
   // ✅ サクラ側アップロード直リンク（プレビュー用）
-  // 例: https://promiseasync.sakura.ne.jp/communication-board/uploads/<stored_name>
   const SAKURA_UPLOAD_BASE =
     "https://promiseasync.sakura.ne.jp/communication-board/uploads/";
   // ✅ サクラ側 upload.php（直アップ先）
-  // ※ Vercel の env に NEXT_PUBLIC_SAKURA_UPLOAD_URL を用意できるならそちらを優先
   const SAKURA_UPLOAD_ENDPOINT =
     process.env.NEXT_PUBLIC_SAKURA_UPLOAD_URL ||
     "https://promiseasync.sakura.ne.jp/communication-board/endpoint/upload.php";
+
   // ✅ プレビューURLを作る（stored_name優先。無い場合は file_url をそのまま開く）
   function getPreviewUrl(f: FileRow) {
     if (f.stored_name)
@@ -119,6 +118,7 @@ export default function TopicDetailPage() {
     title: string;
     message: string;
     url: string;
+    actor?: string; // ✅ 自分除外用
   }) {
     try {
       await fetch("/api/push/send", {
@@ -131,7 +131,7 @@ export default function TopicDetailPage() {
     }
   }
 
-  // ✅ コメント投稿のPush通知文を作る（長すぎ防止）
+  // ✅ コメント投稿のPush通知文
   function buildCommentPushPayload(body: string) {
     const title = topic?.title
       ? `新しいコメント：${topic.title}`
@@ -145,7 +145,8 @@ export default function TopicDetailPage() {
       url: `/topics/${topicId}`,
     };
   }
-  // ✅ ファイル追加のPush通知文を作る（長すぎ防止）
+
+  // ✅ ファイル追加のPush通知文
   function buildFilePushPayload(fileName: string, kind: "upload" | "url") {
     const prefix = kind === "upload" ? "ファイル" : "URL";
     const title = topic?.title
@@ -162,7 +163,7 @@ export default function TopicDetailPage() {
     };
   }
 
-  // ✅ ファイル名編集モーダルを開く（新規）
+  // ✅ ファイル名編集モーダルを開く
   function openEditFileModal(f: FileRow) {
     setEditTargetFile(f);
     setEditFileName(f.file_name ?? "");
@@ -170,7 +171,7 @@ export default function TopicDetailPage() {
     setShowEditFileModal(true);
   }
 
-  // ✅ ファイル名更新（新規）
+  // ✅ ファイル名更新
   async function confirmEditFileName() {
     if (!editTargetFile) return;
 
@@ -217,8 +218,71 @@ export default function TopicDetailPage() {
     setEditFileError(null);
   }
 
+  // ✅ 初期ロード
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicId]);
+
+  // ✅ Realtime（このトピックのコメント/ファイル更新を即反映）
+  useEffect(() => {
+    if (!topicId) return;
+
+    const ch = supabase
+      .channel(`topic-detail-${topicId}`)
+
+      // comments
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "topic_comments",
+          filter: `topic_id=eq.${topicId}`,
+        },
+        () => {
+          fetchComments();
+        },
+      )
+
+      // files
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "topic_files",
+          filter: `topic_id=eq.${topicId}`,
+        },
+        () => {
+          fetchFiles();
+        },
+      )
+
+      // （任意）topic自体の更新（タイトル変更など）
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "topics",
+          filter: `id=eq.${topicId}`,
+        },
+        async () => {
+          // 重くしたくないので topic だけ取り直す
+          const { data } = await supabase
+            .from("topics")
+            .select("*")
+            .eq("id", topicId)
+            .single();
+          if (data) setTopic(data as Topic);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicId]);
 
@@ -255,64 +319,20 @@ export default function TopicDetailPage() {
     setLoading(false);
   }
 
-  type CommentColumn = "body" | "content" | "comment";
-
-  // topic_comments の本文カラム名を「存在するもの」に合わせて決める
-  async function detectCommentColumn(): Promise<CommentColumn> {
-    const candidates: CommentColumn[] = ["body", "content", "comment"];
-
-    for (const col of candidates) {
-      const { error } = await supabase
-        .from("topic_comments")
-        .select(`id,${col}`)
-        .eq("topic_id", topicId)
-        .limit(1);
-
-      if (!error) return col;
-
-      // 「列がない」系なら次を試す。それ以外は本当のエラーなので投げる
-      const msg = error.message ?? "";
-      const isMissingColumn =
-        msg.includes("does not exist") || msg.includes("schema cache");
-
-      if (!isMissingColumn) throw error;
-    }
-
-    // ここまで来たら何かがおかしいので、とりあえず body を返す
-    return "body";
-  }
-
   async function fetchComments() {
-    try {
-      const col = await detectCommentColumn();
+    const { data, error } = await supabase
+      .from("topic_comments")
+      .select("id,topic_id,created_by,created_at,body")
+      .eq("topic_id", topicId)
+      .order("created_at", { ascending: true });
 
-      const { data, error } = await supabase
-        .from("topic_comments")
-        .select(`id,topic_id,created_by,created_at,${col}`)
-        .eq("topic_id", topicId)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error(error);
-        alert("コメント取得に失敗: " + error.message);
-        return;
-      }
-
-      // 取得した列名(col)を body に正規化して state に入れる
-      const normalized =
-        (data ?? []).map((row: any) => ({
-          id: row.id,
-          topic_id: row.topic_id,
-          created_by: row.created_by,
-          created_at: row.created_at,
-          body: row[col] ?? "",
-        })) ?? [];
-
-      setComments(normalized);
-    } catch (e: any) {
-      console.error(e);
-      alert("コメント取得に失敗: " + (e?.message ?? "unknown"));
+    if (error) {
+      console.error(error);
+      alert("コメント取得に失敗: " + error.message);
+      return;
     }
+
+    setComments((data ?? []) as CommentRow[]);
   }
 
   async function fetchFiles() {
@@ -351,15 +371,17 @@ export default function TopicDetailPage() {
 
     setNewBody("");
 
-    // ✅ ここから追加：コメント投稿成功 → 全員へPush通知
-    await safePushNotify(buildCommentPushPayload(postedBody));
+    // ✅ コメント投稿成功 → 自分以外の全員へPush通知
+    await safePushNotify({
+      ...buildCommentPushPayload(postedBody),
+      actor: me.shortId,
+    });
 
-    // ✅ できれば「更新扱い」にもする（topics 一覧の並びが気持ちよくなる）
+    // ✅ 更新扱い（topics 一覧の並び）
     await supabase
       .from("topics")
       .update({ last_activity_at: new Date().toISOString() })
       .eq("id", topicId);
-    // ✅ ここまで追加
 
     fetchComments();
   }
@@ -401,7 +423,6 @@ export default function TopicDetailPage() {
     setEditLoading(true);
     setEditError(null);
 
-    // 成功/失敗を判定しやすいように select を付ける
     const { data, error } = await supabase
       .from("topic_comments")
       .update({ body: nextBody })
@@ -441,14 +462,15 @@ export default function TopicDetailPage() {
     if (!me) return;
     if (!newFileName.trim() || !newFileUrl.trim()) return;
 
-    setFileBusy(true);
-
     const postedName = newFileName.trim();
+    const postedUrl = newFileUrl.trim();
+
+    setFileBusy(true);
 
     const { error } = await supabase.from("topic_files").insert({
       topic_id: topicId,
-      file_name: newFileName.trim(),
-      file_url: newFileUrl.trim(),
+      file_name: postedName,
+      file_url: postedUrl,
       created_by: me.shortId,
     });
 
@@ -462,24 +484,18 @@ export default function TopicDetailPage() {
     setNewFileName("");
     setNewFileUrl("");
     setShowUrlModal(false);
-    // ✅ ここから追加：ファイルアップロード成功 → 全員へPush通知
-    await safePushNotify(buildFilePushPayload(postedName, "upload"));
 
-    // ✅ できれば「更新扱い」にもする（topics 一覧の並びが気持ちよくなる）
-    await supabase
-      .from("topics")
-      .update({ last_activity_at: new Date().toISOString() })
-      .eq("id", topicId);
-    // ✅ ここまで追加
-    // ✅ ここから追加：URL登録成功 → 全員へPush通知
-    await safePushNotify(buildFilePushPayload(newFileName.trim(), "url"));
+    // ✅ URL登録成功 → 自分以外へPush（actor付き）
+    await safePushNotify({
+      ...buildFilePushPayload(postedName, "url"),
+      actor: me.shortId,
+    });
 
     // ✅ 更新扱い（topics 一覧の並び）
     await supabase
       .from("topics")
       .update({ last_activity_at: new Date().toISOString() })
       .eq("id", topicId);
-    // ✅ ここまで追加
 
     fetchFiles();
   }
@@ -566,13 +582,12 @@ export default function TopicDetailPage() {
       // ③ ブラウザ→サクラへ直アップ（Vercelを経由しない）
       const fd = new FormData();
       fd.append("file", file);
-      // あると便利（拡張子判定・元名保持）
       fd.append("orig_name", file.name);
 
       const upRes = await fetch(SAKURA_UPLOAD_ENDPOINT, {
         method: "POST",
         headers: {
-          "X-Upload-Token": token, // ★ ここが重要（upload.php が見るのはこれ）
+          "X-Upload-Token": token,
         },
         body: fd,
       });
@@ -592,6 +607,7 @@ export default function TopicDetailPage() {
 
       const originalNameFromServer = upJson.file_name ?? file.name;
 
+      // ④ Supabase にファイル行を登録
       const { error } = await supabase.from("topic_files").insert({
         topic_id: topicId,
         file_name: originalNameFromServer,
@@ -604,6 +620,18 @@ export default function TopicDetailPage() {
         alert(error.message);
         return;
       }
+
+      // ✅ アップロード成功 → 自分以外へPush（actor付き）
+      await safePushNotify({
+        ...buildFilePushPayload(originalNameFromServer, "upload"),
+        actor: me.shortId,
+      });
+
+      // ✅ 更新扱い（topics 一覧の並び）
+      await supabase
+        .from("topics")
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq("id", topicId);
 
       fetchFiles();
     } catch (e: any) {
@@ -940,7 +968,7 @@ export default function TopicDetailPage() {
                       key={f.id}
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
-                      {/* ✅ ファイル名クリックでプレビュー（あなたの要件どおり） */}
+                      {/* ✅ ファイル名クリックでプレビュー */}
                       <div
                         className="fileTitle"
                         onClick={() => openPreview(f)}
@@ -981,7 +1009,7 @@ export default function TopicDetailPage() {
                         </div>
                       </div>
 
-                      {/* ✅ 右側アイコン列：編集（edit-w） / DL（アップロードのみ） / ゴミ箱（自分のだけ） */}
+                      {/* ✅ 右側アイコン列：編集 / DL（アップロードのみ） / 削除（自分のみ） */}
                       <div
                         style={{
                           display: "flex",
@@ -989,7 +1017,7 @@ export default function TopicDetailPage() {
                           gap: 8,
                         }}
                       >
-                        {/* ✅ 編集（自分のだけ表示） */}
+                        {/* ✅ 編集（自分のだけ） */}
                         {me?.shortId === f.created_by && (
                           <button
                             onClick={(e) => {
@@ -1015,7 +1043,7 @@ export default function TopicDetailPage() {
                           </button>
                         )}
 
-                        {/* ✅ ダウンロード（アップロードしたものだけ表示：URL追加は非表示） */}
+                        {/* ✅ ダウンロード（アップロードのみ表示：URL追加は非表示） */}
                         {!isUrlAdded(f) && (
                           <button
                             onClick={(e) => {
@@ -1234,7 +1262,7 @@ export default function TopicDetailPage() {
         </div>
       )}
 
-      {/* ✅ ファイル名編集モーダル（新規） */}
+      {/* ✅ ファイル名編集モーダル */}
       {showEditFileModal && (
         <div
           style={{

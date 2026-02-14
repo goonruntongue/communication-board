@@ -10,7 +10,6 @@ type PushSubRow = {
   endpoint: string;
   p256dh: string;
   auth: string;
-  user_short_id: string | null; // ← 追加
 };
 
 function getEnv(name: string) {
@@ -31,7 +30,6 @@ export async function POST(req: Request) {
   try {
     // 任意メッセージ（未指定ならデフォルト）
     const body = await req.json().catch(() => ({}));
-    const actor = (body?.actor ?? "").toString().trim(); // ← 追加（空なら ""）
     const title = body?.title ?? "更新があります";
     const message = body?.message ?? "アプリを開いて確認してください";
     const url = body?.url ?? "/topics";
@@ -56,14 +54,11 @@ export async function POST(req: Request) {
     // あなたのテーブル構造に合わせて取得
     const { data, error } = await supabase
       .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth, user_short_id"); // ← user_short_id を追加
+      .select("id, endpoint, p256dh, auth");
 
     if (error) throw error;
 
-    const rowsAll = (data ?? []) as PushSubRow[];
-    const rows = actor
-      ? rowsAll.filter((r) => (r.user_short_id ?? "") !== actor) // ← 追加（自分除外）
-      : rowsAll;
+    const rows = (data ?? []) as PushSubRow[];
 
     const payload = JSON.stringify({ title, message, url });
 

@@ -11,10 +11,6 @@ export async function POST(req: Request) {
   try {
     const sub = await req.json();
 
-    const user_short_id = (sub?.user_short_id ?? sub?.userShortId ?? "")
-      .toString()
-      .trim(); // ← 追加
-
     const endpoint = sub?.endpoint;
     const p256dh = sub?.keys?.p256dh;
     const auth = sub?.keys?.auth;
@@ -29,10 +25,7 @@ export async function POST(req: Request) {
     // ✅ endpoint をユニークキーとして保存（同じ端末なら上書き）
     const { error } = await supabaseAdmin
       .from("push_subscriptions")
-      .upsert(
-        { endpoint, p256dh, auth, user_short_id: user_short_id || null },
-        { onConflict: "endpoint" },
-      );
+      .upsert({ endpoint, p256dh, auth }, { onConflict: "endpoint" });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
