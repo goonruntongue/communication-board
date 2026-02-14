@@ -10,10 +10,10 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    // ✅ 1) 先にJSONを読む（これが最優先）
+    // 1) JSONを読む
     const sub = await req.json();
 
-    // ✅ 2) user_short_id を取り出す
+    // 2) user_short_id を取り出す（snake/camel両対応）
     const user_short_id = (sub?.user_short_id ?? sub?.userShortId ?? "")
       .toString()
       .trim();
@@ -29,16 +29,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ 3) upsert（endpoint重複なら更新）
-    const { error } = await supabaseAdmin.from("push_subscriptions").upsert(
-      {
-        endpoint,
-        p256dh,
-        auth,
-        user_short_id: user_short_id || null,
-      },
-      { onConflict: "endpoint" },
-    );
+    // ✅ 3) upsert payload を条件付きにする
+    //    user_short_id が空のときは payload に含めない（= 既存の値を null で上書きしない）
+    const payload: Record<string, any> = { endpoint, p256dh, auth };
+    if (user_short_id) {
+      payload.user_short_id = user_short_id;
+    }
+
+    const { error } = await supabaseAdmin
+      .from("push_subscriptions")
+      .upsert(payload, { onConflict: "endpoint" });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

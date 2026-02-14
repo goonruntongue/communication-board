@@ -1,5 +1,5 @@
 "use client";
-
+import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -61,11 +61,35 @@ export default function PushEnableButton() {
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         }));
+      // ✅ ログインユーザーの shortId を取る（Null上書き事故を防ぐ）
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
+
+      if (sessionErr) {
+        setMsg("ログイン情報取得に失敗しました。再ログインしてください");
+        return;
+      }
+
+      const email = sessionData.session?.user?.email ?? "";
+      if (!email) {
+        setMsg("ログイン状態ではありません（再ログインしてください）");
+        return;
+      }
+
+      const shortId = email.split("@")[0] ?? "";
+      if (!shortId) {
+        setMsg("shortId を作れませんでした");
+        return;
+      }
 
       const res = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub),
+        body: JSON.stringify({
+          ...sub.toJSON(),
+          user_short_id: shortId || null,
+          userShortId: shortId || null,
+        }),
       });
 
       if (!res.ok) {

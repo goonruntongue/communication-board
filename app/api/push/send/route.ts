@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
     const rowsAll = (data ?? []) as PushSubRow[];
     const rows = actor
-      ? rowsAll.filter((r) => (r.user_short_id ?? "") !== actor) // ← 追加（自分除外）
+      ? rowsAll.filter((r) => r.user_short_id && r.user_short_id !== actor)
       : rowsAll;
 
     const payload = JSON.stringify({ title, message, url });
