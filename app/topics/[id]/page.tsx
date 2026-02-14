@@ -289,18 +289,29 @@ export default function TopicDetailPage() {
   async function init() {
     setLoading(true);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData.session;
+    const { data: sessionData, error: sessionErr } =
+      await supabase.auth.getSession();
 
-    if (!session?.user?.email) {
+    if (sessionErr) {
+      console.error(sessionErr);
+      setLoading(false);
       router.push("/login");
       return;
     }
 
-    const user = session.user;
+    const session = sessionData.session;
+    const user = session?.user;
 
-    const shortId = user.email.split("@")[0] ?? "unknown";
-    setMe({ email: user.email, userId: user.id, shortId });
+    // ✅ TS対策：email を先に変数へ退避してガード
+    const email = user?.email ?? "";
+    if (!user || !email) {
+      setLoading(false);
+      router.push("/login");
+      return;
+    }
+
+    const shortId = email.split("@")[0] ?? "unknown";
+    setMe({ email, userId: user.id, shortId });
 
     const { data: topicData, error: topicErr } = await supabase
       .from("topics")
@@ -313,6 +324,7 @@ export default function TopicDetailPage() {
       setLoading(false);
       return;
     }
+
     setTopic(topicData);
 
     await Promise.all([fetchComments(), fetchFiles()]);
