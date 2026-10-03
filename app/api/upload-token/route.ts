@@ -31,6 +31,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // 登録済み（app_users にある）アカウントだけ許可
+    const email = (userData.user.email ?? "").toLowerCase();
+    const { data: allowed } = await supabaseAdmin
+      .from("app_users")
+      .select("short_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
+
     // ✅ 環境変数に設定した固定トークンを返す
     const fixedToken = process.env.SAKURA_UPLOAD_TOKEN;
 

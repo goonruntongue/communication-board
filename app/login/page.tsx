@@ -1,52 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-const LOGIN_ID_MAP: Record<string, string> = {
-  fanio: "katsu",
-  nantoka: "kimi",
-};
+import { fetchShortId } from "@/lib/shortId";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [id, setId] = useState("");
-  const [pass, setPass] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // Googleから戻ってきた時／ログイン済みの時は、登録済みアカウントか確認して /topics へ
+  useEffect(() => {
+    let active = true;
+
+    // Google側でキャンセル・拒否された場合のエラー
+    const params = new URLSearchParams(
+      window.location.hash.replace(/^#/, "") || window.location.search,
+    );
+    const oauthError = params.get("error_description");
+
+    const check = async (email: string | null | undefined) => {
+      if (!email) {
+        if (!active) return;
+        if (oauthError) setError(oauthError);
+        setLoading(false);
+        return;
+      }
+
+      const shortId = await fetchShortId(email);
+      if (!active) return;
+
+      if (!shortId) {
+        await supabase.auth.signOut();
+        if (!active) return;
+        setError("このGoogleアカウントでは利用できません。");
+        setLoading(false);
+        return;
+      }
+
+      router.replace("/topics");
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        // コールバック内でSupabaseを直接awaitするとデッドロックするため遅延させる
+        setTimeout(() => check(session?.user?.email), 0);
+      }
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [router]);
+
+  const onGoogleLogin = async () => {
     setError(null);
     setLoading(true);
 
-    // UI上のログインID → Supabase上の内部ID（既存データのcreated_byを維持するため内部IDは変えない）
-    const internalId = LOGIN_ID_MAP[id.trim()];
-    if (!internalId) {
-      setLoading(false);
-      setError("Invalid login credentials");
-      return;
-    }
-
-    // UI上は「ID」だが、内部はSupabaseのEmail/Password認証を使うためメール形式に変換する
-    const email = `${internalId}@local.test`;
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      // Supabase側のパスワードは「入力パス + 内部ID」
-      password: `${pass}${internalId}`,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/login`,
+        queryParams: { prompt: "select_account" },
+      },
     });
 
-    setLoading(false);
-
     if (error) {
-      setError(error.message); // まずは原因が分かるように生エラーを表示
-      return;
+      setLoading(false);
+      setError(error.message);
     }
-
-    router.push("/topics");
   };
 
   return (
@@ -76,77 +101,33 @@ export default function LoginPage() {
           <span style={{ color: "#d9ff3f" }}>Communication</span> Board
         </div>
 
-        <form
-          onSubmit={onSubmit}
-          style={{ marginTop: 40 }}
-          className="login-form"
-        >
-          <label style={{ display: "block", fontSize: 22, marginBottom: 8 }}>
-            ID
-          </label>
-          <input
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            autoComplete="username"
-            placeholder="ID名"
-            style={{
-              width: "100%",
-              height: 44,
-              borderRadius: 8,
-              border: "1px solid #ddd",
-              padding: "0 12px",
-              fontSize: 16,
-            }}
-          />
-
-          <label
-            style={{ display: "block", fontSize: 22, margin: "22px 0 8px" }}
-          >
-            Pass
-          </label>
-          <input
-            type="password"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            autoComplete="current-password"
-            placeholder="パスワード"
-            style={{
-              width: "100%",
-              height: 44,
-              borderRadius: 8,
-              border: "1px solid #ddd",
-              padding: "0 12px",
-              fontSize: 16,
-            }}
-          />
-
+        <div style={{ marginTop: 40 }} className="login-form">
           {error && (
-            <p style={{ color: "crimson", marginTop: 12, lineHeight: 1.4 }}>
+            <p style={{ color: "crimson", marginBottom: 12, lineHeight: 1.4 }}>
               {error}
             </p>
           )}
 
           <button
-            type="submit"
+            type="button"
+            onClick={onGoogleLogin}
             disabled={loading}
             style={{
-              marginTop: 26,
-              width: 120,
-              height: 40,
+              width: "100%",
+              height: 44,
               borderRadius: 999,
-              border: "none",
-              background: "#bcb6ff",
+              border: "1px solid #ddd",
+              background: "#fff",
               cursor: "pointer",
               display: "block",
-              marginInline: "auto",
               opacity: loading ? 0.6 : 1,
               fontSize: 16,
               fontWeight: 700,
             }}
           >
-            {loading ? "..." : "login"}
+            {loading ? "..." : "Googleでログイン"}
           </button>
-        </form>
+        </div>
       </div>
     </main>
   );

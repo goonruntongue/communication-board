@@ -37,7 +37,8 @@ export default function RegisterSW() {
           data: { user },
         } = await supabase.auth.getUser();
 
-        const sid = user?.email?.split("@")[0] ?? "";
+        const { fetchShortId } = await import("@/lib/shortId");
+        const sid = (await fetchShortId(user?.email)) ?? "";
         setShortId(sid);
       } catch (e) {
         console.error(e);

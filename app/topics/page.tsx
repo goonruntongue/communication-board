@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchShortId } from "@/lib/shortId";
 import { useRouter } from "next/navigation";
 import BackButton from "@/components/BackButton";
 import PushEnableButton from "@/components/PushEnableButton";
@@ -62,7 +63,6 @@ export default function TopicsPage() {
   // 削除モーダル
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Topic | null>(null);
-  const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -159,7 +159,11 @@ export default function TopicsPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const id = user?.email?.split("@")[0] ?? null;
+      const id = await fetchShortId(user?.email);
+      if (!id) {
+        router.replace("/login");
+        return;
+      }
       setMyId(id);
 
       await fetchTopics();
@@ -224,7 +228,8 @@ export default function TopicsPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const created_by = user.email?.split("@")[0] ?? "unknown";
+    const created_by = await fetchShortId(user.email);
+    if (!created_by) return;
 
     // 1) topics insert
     const { data: inserted, error: e1 } = await supabase
@@ -441,7 +446,6 @@ export default function TopicsPage() {
 
   function openDeleteModal(topic: Topic) {
     setDeleteTarget(topic);
-    setDeletePassword("");
     setDeleteError(null);
     setShowDeleteModal(true);
   }
@@ -456,37 +460,9 @@ export default function TopicsPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    if (!deletePassword) {
-      setDeleteError("パスワードを入力してください");
-      return;
-    }
 
     setDeleteLoading(true);
     setDeleteError(null);
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
-
-    if (userErr || !user?.email) {
-      setDeleteLoading(false);
-      setDeleteError(
-        "ログイン情報が取得できませんでした。再ログインしてください。",
-      );
-      return;
-    }
-
-    const { error: loginErr } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: deletePassword,
-    });
-
-    if (loginErr) {
-      setDeleteLoading(false);
-      setDeleteError("パスワードが違います。");
-      return;
-    }
 
     const { error: delErr } = await supabase
       .from("topics")
@@ -502,7 +478,6 @@ export default function TopicsPage() {
 
     setShowDeleteModal(false);
     setDeleteTarget(null);
-    setDeletePassword("");
     fetchTopics();
   }
 
@@ -1284,17 +1259,8 @@ export default function TopicsPage() {
             <div style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.5 }}>
               対象：<b>{deleteTarget?.title}</b>
               <br />
-              削除するにはログイン中アカウントのパスワードを入力してください。
+              削除すると元に戻せません。
             </div>
-
-            <input
-              type="password"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder="パスワード"
-              style={{ width: "100%", height: 40, padding: "0 10px" }}
-              disabled={deleteLoading}
-            />
 
             {deleteError && (
               <p style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>

@@ -1,5 +1,6 @@
 "use client";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchShortId } from "@/lib/shortId";
 import { useEffect, useState } from "react";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -76,7 +77,7 @@ export default function PushEnableButton() {
         return;
       }
 
-      const shortId = email.split("@")[0] ?? "";
+      const shortId = await fetchShortId(email);
       if (!shortId) {
         setMsg("shortId を作れませんでした");
         return;

@@ -3,6 +3,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchShortId } from "@/lib/shortId";
 import BackButton from "@/components/BackButton";
 
 type Topic = {
@@ -325,7 +326,12 @@ export default function TopicDetailPage() {
       return;
     }
 
-    const shortId = email.split("@")[0] ?? "unknown";
+    const shortId = await fetchShortId(email);
+    if (!shortId) {
+      setLoading(false);
+      router.push("/login");
+      return;
+    }
     setMe({ email, userId: user.id, shortId });
 
     const { data: topicData, error: topicErr } = await supabase
@@ -387,7 +393,7 @@ export default function TopicDetailPage() {
     const email = data.session?.user?.email ?? "";
     if (!email) return null;
 
-    const shortId = email.split("@")[0] ?? "";
+    const shortId = await fetchShortId(email);
     if (!shortId) return null;
 
     const next = { email, userId: data.session!.user.id, shortId };
