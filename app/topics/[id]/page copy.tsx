@@ -83,8 +83,8 @@ export default function TopicDetailPage() {
   const [dragOver, setDragOver] = useState(false);
 
   const displayName = (id: string) => {
-    if (id === "katsu") return "Fanio";
-    if (id === "kimi") return "Nantoka";
+    if (id === "katsu") return "fanio";
+    if (id === "kimi") return "nantoka";
     return id;
   };
 

@@ -24,7 +24,7 @@ export default function TopicsPage() {
   const [newTitle, setNewTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ログイン中ユーザーID（katsu / kimi）
+  // ログイン中ユーザーの内部ID（katsu / kimi。表示名は fanio / nantoka）
   const [myId, setMyId] = useState<string | null>(null);
 
   // カテゴリ一覧 & 選択中カテゴリ（フィルタ用）
@@ -81,8 +81,8 @@ export default function TopicsPage() {
   }
 
   const displayName = (id: string) => {
-    if (id === "katsu") return "Fanio";
-    if (id === "kimi") return "Nantoka";
+    if (id === "katsu") return "fanio";
+    if (id === "kimi") return "nantoka";
     return id;
   };
 

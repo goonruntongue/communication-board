@@ -165,20 +165,20 @@ body {
     filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(500%) hue-rotate(5deg);
 }
 
-.Fanio,
-.Nantoka {
+.fanio,
+.nantoka {
     border-radius: 2px;
     padding: 0.25em 0.5em;
     margin-left: 0.25em;
     font-size: 0.8em;
 }
 
-.Fanio {
+.fanio {
     background: rgb(163, 10, 180);
     color: #fff;
 }
 
-.Nantoka {
+.nantoka {
     background: green;
     color: #fff;
 }

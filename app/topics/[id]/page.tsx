@@ -99,8 +99,8 @@ export default function TopicDetailPage() {
   }, []);
 
   const displayName = (id: string) => {
-    if (id === "katsu") return "Fanio";
-    if (id === "kimi") return "Nantoka";
+    if (id === "katsu") return "fanio";
+    if (id === "kimi") return "nantoka";
     return id;
   };
 

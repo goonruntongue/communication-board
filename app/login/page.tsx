@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+const LOGIN_ID_MAP: Record<string, string> = {
+  fanio: "katsu",
+  nantoka: "kimi",
+};
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -17,12 +22,21 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
+    // UI上のログインID → Supabase上の内部ID（既存データのcreated_byを維持するため内部IDは変えない）
+    const internalId = LOGIN_ID_MAP[id.trim()];
+    if (!internalId) {
+      setLoading(false);
+      setError("Invalid login credentials");
+      return;
+    }
+
     // UI上は「ID」だが、内部はSupabaseのEmail/Password認証を使うためメール形式に変換する
-    const email = `${id.trim()}@local.test`;
+    const email = `${internalId}@local.test`;
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
-      password: pass,
+      // Supabase側のパスワードは「入力パス + 内部ID」
+      password: `${pass}${internalId}`,
     });
 
     setLoading(false);
