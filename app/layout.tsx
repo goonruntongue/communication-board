@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "./css/common.css";
+import "./css/theme-soft.css";
+import "./css/theme-skeuo.css";
 import RegisterSW from "@/components/RegisterSW";
 import NavProgress from "@/components/NavProgress";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
+
+// 前回選んだテーマを、画面が描かれる前に反映する（描いてから切り替えると一瞬ちらつくため）
+const THEME_BOOT_SCRIPT = `try{if(localStorage.getItem(${JSON.stringify(
+  THEME_STORAGE_KEY,
+)})==="skeuo")document.documentElement.dataset.theme="skeuo"}catch(e){}`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,10 +33,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <RegisterSW />
         <NavProgress />
         {children}

@@ -1,12 +1,12 @@
 /*
- * Communication Board の見た目（スキューモーフィズム版）。
- * 配色は PWA アイコンと同じ3色（チャコール / 白 / ライムイエロー）のまま、
- * 光の当たり方・影・押し込みで「物」としての質感を出す。光は常に上から当たっている想定。
+ * Communication Board のテーマ「スキューモーフ」。
+ * 光と影・つや・押し込みで「物」としての質感を出す。光は上から当たっている想定。
+ * 配色は PWA アイコンと同じ3色（チャコール / 白 / ライムイエロー）。
+ * 全ルールの先頭に html[data-theme="skeuo"] を付け、このテーマのときだけ効くようにしている。
  * 各要素にはインラインスタイルが残っているため、上書きが必要な箇所は !important を付けている。
- * ひとつ前のフラット版は common.flat.css に残してある（layout.tsx の import を差し替えれば戻る）。
  */
 
-:root {
+html[data-theme="skeuo"] {
     --ink: #111;
     --char: #2d2d2d;
     --paper: #fff;
@@ -28,14 +28,14 @@
     --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-body {
+html[data-theme="skeuo"] body {
     color: var(--ink) !important;
     background: #f1f1ef;
     font-family: var(--font-geist-sans), "Hiragino Sans", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
 }
 
 /* 紙のような、ごく薄いグラデーションと粒子 */
-main {
+html[data-theme="skeuo"] main {
     padding: 0 !important;
     background:
         var(--grain),
@@ -43,7 +43,7 @@ main {
         linear-gradient(#f7f7f5, #eaeae7) !important;
 }
 
-button {
+html[data-theme="skeuo"] button {
     font-family: inherit;
 }
 
@@ -81,7 +81,7 @@ button {
 
 /* ---------- ヘッダー（つや消しの黒い筐体と、光るライン） ---------- */
 
-header {
+html[data-theme="skeuo"] header {
     position: relative;
     padding: 14px 0 18px;
     background:
@@ -95,7 +95,7 @@ header {
     text-transform: uppercase;
 }
 
-header::after {
+html[data-theme="skeuo"] header::after {
     content: "";
     position: absolute;
     right: 0;
@@ -107,7 +107,7 @@ header::after {
     animation: glow 4s ease-in-out infinite;
 }
 
-.header-inner {
+html[data-theme="skeuo"] .header-inner {
     position: relative;
     display: flex;
     align-items: center;
@@ -118,14 +118,14 @@ header::after {
 }
 
 /* 見出しの文字どうしが離れないよう、すき間はアイコンの側に付ける */
-.header-inner img {
+html[data-theme="skeuo"] .header-inner img {
     width: 28px !important;
     height: 28px !important;
     margin-right: 10px;
     filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
 }
 
-.header-inner .backlink {
+html[data-theme="skeuo"] .header-inner .backlink {
     position: absolute;
     top: 50%;
     left: 0;
@@ -137,19 +137,19 @@ header::after {
     transition: transform 0.2s var(--ease);
 }
 
-.header-inner .backlink:hover {
+html[data-theme="skeuo"] .header-inner .backlink:hover {
     /* 白いアイコンをライムイエローに */
     filter: brightness(0) saturate(100%) invert(92%) sepia(48%) saturate(600%) hue-rotate(12deg) drop-shadow(0 0 6px rgba(217, 255, 63, 0.6));
     transform: translateY(-50%) translateX(-3px);
 }
 
-.first-letter {
+html[data-theme="skeuo"] .first-letter {
     color: var(--lime);
     text-shadow: 0 0 10px rgba(217, 255, 63, 0.55), 0 -1px 0 #000;
 }
 
 /* 通知の許可ボタン（一覧ページのヘッダー上部） */
-.push-box {
+html[data-theme="skeuo"] .push-box {
     display: flex !important;
     flex-wrap: wrap;
     align-items: center;
@@ -160,16 +160,16 @@ header::after {
     text-transform: none;
 }
 
-.push-label {
+html[data-theme="skeuo"] .push-label {
     color: #bdbdbd !important;
     font-weight: 500;
 }
 
-.push-label b {
+html[data-theme="skeuo"] .push-label b {
     color: #fff;
 }
 
-.push-btn {
+html[data-theme="skeuo"] .push-btn {
     height: 28px !important;
     padding: 0 14px !important;
     border: 1px solid #000 !important;
@@ -183,16 +183,16 @@ header::after {
     transition: color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
-.push-btn:hover:not(:disabled) {
+html[data-theme="skeuo"] .push-btn:hover:not(:disabled) {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 12px rgba(217, 255, 63, 0.45);
 }
 
-.push-btn:active:not(:disabled) {
+html[data-theme="skeuo"] .push-btn:active:not(:disabled) {
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7);
     transform: translateY(1px);
 }
 
-.push-msg {
+html[data-theme="skeuo"] .push-msg {
     flex-basis: 100%;
     color: var(--lime) !important;
     font-weight: 500;
@@ -201,7 +201,7 @@ header::after {
 /* ---------- 共通の部品 ---------- */
 
 /* 少し浮いた紙のカード */
-.cb-panel {
+html[data-theme="skeuo"] .cb-panel {
     padding: 18px !important;
     margin-bottom: 0 !important;
     border: 1px solid #c8c8c5;
@@ -211,12 +211,12 @@ header::after {
     animation: rise 0.5s var(--ease) both;
 }
 
-.cb-panel + .cb-panel {
+html[data-theme="skeuo"] .cb-panel + .cb-panel {
     animation-delay: 0.08s;
 }
 
 /* 押すとへこむキー */
-.cb-chip {
+html[data-theme="skeuo"] .cb-chip {
     padding: 5px 13px !important;
     border: 1px solid #a9a9a9 !important;
     border-radius: 999px !important;
@@ -230,18 +230,18 @@ header::after {
     transition: transform 0.12s var(--ease), box-shadow 0.12s, filter 0.12s;
 }
 
-.cb-chip:hover:not(:disabled) {
+html[data-theme="skeuo"] .cb-chip:hover:not(:disabled) {
     filter: brightness(1.03);
     transform: translateY(-1px);
 }
 
-.cb-chip:active:not(:disabled) {
+html[data-theme="skeuo"] .cb-chip:active:not(:disabled) {
     box-shadow: var(--pressed);
     transform: translateY(1px);
 }
 
 /* 選択中は、押し込まれて光っている状態 */
-.cb-chip[data-active="true"] {
+html[data-theme="skeuo"] .cb-chip[data-active="true"] {
     border-color: var(--lime-edge) !important;
     background: linear-gradient(var(--lime-lo), var(--lime) 60%, var(--lime-hi)) !important;
     box-shadow: inset 0 2px 4px rgba(60, 80, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 10px rgba(217, 255, 63, 0.55);
@@ -249,7 +249,7 @@ header::after {
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.cb-chip-dark[data-active="true"] {
+html[data-theme="skeuo"] .cb-chip-dark[data-active="true"] {
     border-color: #000 !important;
     background: linear-gradient(#141414, #2e2e2e) !important;
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -257,20 +257,20 @@ header::after {
     text-shadow: 0 -1px 0 #000;
 }
 
-.chip-x {
+html[data-theme="skeuo"] .chip-x {
     border: 1px solid #8e8e8e !important;
     background: linear-gradient(#fff, #e2e2e2) !important;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
     transition: background 0.15s, color 0.15s;
 }
 
-.chip-x:hover {
+html[data-theme="skeuo"] .chip-x:hover {
     border-color: #b3261e !important;
     background: linear-gradient(#ff6a60, var(--red)) !important;
     color: #fff;
 }
 
-.cb-round {
+html[data-theme="skeuo"] .cb-round {
     display: grid;
     place-items: center;
     width: 30px !important;
@@ -283,18 +283,18 @@ header::after {
     transition: transform 0.12s, box-shadow 0.12s;
 }
 
-.cb-round:hover {
+html[data-theme="skeuo"] .cb-round:hover {
     transform: translateY(-1px);
 }
 
-.cb-round:active {
+html[data-theme="skeuo"] .cb-round:active {
     box-shadow: var(--pressed);
     transform: translateY(1px);
 }
 
 /* へこんだ入力欄 */
-.cb-input,
-.cb-textarea {
+html[data-theme="skeuo"] .cb-input,
+html[data-theme="skeuo"] .cb-textarea {
     border: 1px solid #b4b4b1 !important;
     border-radius: 10px !important;
     background: linear-gradient(#f3f3f1, #ffffff 26px) !important;
@@ -306,28 +306,28 @@ header::after {
     transition: box-shadow 0.2s, border-color 0.2s;
 }
 
-.cb-input {
+html[data-theme="skeuo"] .cb-input {
     height: 40px !important;
     padding: 0 12px !important;
 }
 
-.cb-textarea {
+html[data-theme="skeuo"] .cb-textarea {
     padding: 12px !important;
     line-height: 1.6;
 }
 
-.cb-input:focus,
-.cb-textarea:focus {
+html[data-theme="skeuo"] .cb-input:focus,
+html[data-theme="skeuo"] .cb-textarea:focus {
     border-color: var(--lime-edge) !important;
     box-shadow: var(--well), 0 0 0 3px rgba(217, 255, 63, 0.75), 0 0 14px rgba(217, 255, 63, 0.5);
 }
 
-.cb-inline-form {
+html[data-theme="skeuo"] .cb-inline-form {
     align-items: center;
 }
 
 /* 立体的なボタン */
-.cb-btn {
+html[data-theme="skeuo"] .cb-btn {
     padding: 8px 16px !important;
     border: 1px solid #a3a3a3 !important;
     border-radius: 10px !important;
@@ -341,22 +341,22 @@ header::after {
     transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
 }
 
-.cb-btn:hover:not(:disabled) {
+html[data-theme="skeuo"] .cb-btn:hover:not(:disabled) {
     filter: brightness(1.04);
 }
 
-.cb-btn:active:not(:disabled) {
+html[data-theme="skeuo"] .cb-btn:active:not(:disabled) {
     box-shadow: var(--pressed);
     transform: translateY(3px);
 }
 
-.cb-btn:disabled {
+html[data-theme="skeuo"] .cb-btn:disabled {
     opacity: 0.55;
     cursor: default;
 }
 
-.cb-btn-primary,
-.cb-btn-danger {
+html[data-theme="skeuo"] .cb-btn-primary,
+html[data-theme="skeuo"] .cb-btn-danger {
     height: auto;
     border-color: #000 !important;
     background: linear-gradient(#4e4e4e, #2a2a2a 48%, #171717 52%, #0f0f0f) !important;
@@ -365,12 +365,12 @@ header::after {
     text-shadow: 0 -1px 0 #000;
 }
 
-.cb-inline-form .cb-btn {
+html[data-theme="skeuo"] .cb-inline-form .cb-btn {
     height: 40px !important;
     padding: 0 16px !important;
 }
 
-.cb-btn-primary:hover:not(:disabled) {
+html[data-theme="skeuo"] .cb-btn-primary:hover:not(:disabled) {
     border-color: var(--lime-edge) !important;
     background: linear-gradient(var(--lime-hi), var(--lime) 50%, var(--lime-lo)) !important;
     box-shadow: var(--raised-lime);
@@ -379,60 +379,60 @@ header::after {
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.cb-btn-danger:hover:not(:disabled) {
+html[data-theme="skeuo"] .cb-btn-danger:hover:not(:disabled) {
     border-color: #a51d15 !important;
     background: linear-gradient(#ff7a70, var(--red) 50%, #d9281e) !important;
     filter: none;
 }
 
-.cb-btn-primary:active:not(:disabled),
-.cb-btn-danger:active:not(:disabled) {
+html[data-theme="skeuo"] .cb-btn-primary:active:not(:disabled),
+html[data-theme="skeuo"] .cb-btn-danger:active:not(:disabled) {
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.5);
 }
 
-.cb-actions {
+html[data-theme="skeuo"] .cb-actions {
     display: flex !important;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 20px !important;
 }
 
-.cb-actions .cb-btn {
+html[data-theme="skeuo"] .cb-actions .cb-btn {
     margin-left: 0 !important;
 }
 
-.cb-label {
+html[data-theme="skeuo"] .cb-label {
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.04em;
 }
 
-.cb-empty {
+html[data-theme="skeuo"] .cb-empty {
     color: var(--mute) !important;
     font-size: 13px !important;
     opacity: 1 !important;
 }
 
-.cb-note {
+html[data-theme="skeuo"] .cb-note {
     color: var(--mute) !important;
     font-size: 12px;
     line-height: 1.6;
     opacity: 1 !important;
 }
 
-.cb-error {
+html[data-theme="skeuo"] .cb-error {
     color: #d0021b !important;
     font-size: 13px;
     font-weight: 600;
 }
 
-.cb-loading {
+html[data-theme="skeuo"] .cb-loading {
     color: var(--ink) !important;
     font-weight: 700;
 }
 
 /* アイコンだけのボタン */
-.icon-btn {
+html[data-theme="skeuo"] .icon-btn {
     display: grid;
     place-items: center;
     width: 34px;
@@ -443,25 +443,25 @@ header::after {
     transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
-.icon-btn:hover {
+html[data-theme="skeuo"] .icon-btn:hover {
     background: linear-gradient(#ffffff, #e6e6e4) !important;
     box-shadow: inset 0 1px 0 #fff, 0 1px 0 #b2b2b2, 0 3px 6px rgba(0, 0, 0, 0.18);
 }
 
-.icon-btn:active {
+html[data-theme="skeuo"] .icon-btn:active {
     box-shadow: var(--pressed);
     transform: translateY(1px);
 }
 
 /* 白で描かれたアイコンを、白い背景の上では黒にする */
-.icon-invert,
-.board img[alt="delete"] {
+html[data-theme="skeuo"] .icon-invert,
+html[data-theme="skeuo"] .board img[alt="delete"] {
     filter: invert(1);
 }
 
 /* 名前のラベル（つやのある小さな札） */
-.fanio,
-.nantoka {
+html[data-theme="skeuo"] .fanio,
+html[data-theme="skeuo"] .nantoka {
     display: inline-block;
     margin-left: 0.25em;
     padding: 1px 8px;
@@ -477,17 +477,17 @@ header::after {
     vertical-align: middle;
 }
 
-.fanio {
+html[data-theme="skeuo"] .fanio {
     background-color: rgb(163, 10, 180);
 }
 
-.nantoka {
+html[data-theme="skeuo"] .nantoka {
     background-color: green;
 }
 
 /* ---------- モーダル ---------- */
 
-.cb-overlay {
+html[data-theme="skeuo"] .cb-overlay {
     z-index: 1000 !important;
     padding: 16px;
     background: radial-gradient(circle at 50% 40%, rgba(40, 40, 40, 0.55), rgba(8, 8, 8, 0.78)) !important;
@@ -495,7 +495,7 @@ header::after {
     animation: fade 0.2s ease-out both;
 }
 
-.cb-modal {
+html[data-theme="skeuo"] .cb-modal {
     width: min(380px, 100%) !important;
     padding: 22px !important;
     border: 1px solid #bdbdba;
@@ -505,7 +505,7 @@ header::after {
     animation: pop 0.28s var(--ease) both;
 }
 
-.cb-modal h3 {
+html[data-theme="skeuo"] .cb-modal h3 {
     margin: 0 0 14px !important;
     padding-bottom: 12px;
     /* 彫り込んだ線 */
@@ -516,30 +516,30 @@ header::after {
     text-shadow: 0 1px 0 #fff;
 }
 
-.cb-modal .cb-input,
-.cb-modal .cb-textarea {
+html[data-theme="skeuo"] .cb-modal .cb-input,
+html[data-theme="skeuo"] .cb-modal .cb-textarea {
     margin-top: 0 !important;
 }
 
-.cb-modal-text {
+html[data-theme="skeuo"] .cb-modal-text {
     color: #333;
 }
 
 /* ---------- トピック一覧 ---------- */
 
-.list-wrap {
+html[data-theme="skeuo"] .list-wrap {
     display: grid;
     gap: 24px;
     width: min(1024px, 94%);
     margin: 24px auto 120px !important;
 }
 
-.cat-head {
+html[data-theme="skeuo"] .cat-head {
     flex-wrap: wrap;
 }
 
 /* 浮き出たライムイエローの銘板 */
-.cat-title {
+html[data-theme="skeuo"] .cat-title {
     padding: 2px 12px;
     border: 1px solid var(--lime-edge);
     border-radius: 8px;
@@ -551,11 +551,11 @@ header::after {
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.topic-panel {
+html[data-theme="skeuo"] .topic-panel {
     padding: 6px 18px 12px !important;
 }
 
-.date-pill {
+html[data-theme="skeuo"] .date-pill {
     margin: 14px 0 4px !important;
     padding: 3px 12px !important;
     border: 1px solid #000;
@@ -571,7 +571,7 @@ header::after {
 }
 
 /* 行の区切りは、彫り込んだ線（暗い線の下に明るい線） */
-.goto-topic {
+html[data-theme="skeuo"] .goto-topic {
     align-items: center !important;
     margin: 0 !important;
     padding: 14px 10px !important;
@@ -581,31 +581,31 @@ header::after {
     transition: background 0.2s, box-shadow 0.2s, transform 0.2s var(--ease);
 }
 
-.goto-topic:hover {
+html[data-theme="skeuo"] .goto-topic:hover {
     border-bottom-color: transparent;
     background: linear-gradient(var(--lime-hi), var(--lime) 60%, #cdf22e);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 0 var(--lime-edge), 0 6px 14px rgba(0, 0, 0, 0.14);
     transform: translateX(4px);
 }
 
-.goto-topic:active {
+html[data-theme="skeuo"] .goto-topic:active {
     box-shadow: inset 0 2px 5px rgba(60, 80, 0, 0.4);
     transform: translateX(4px) translateY(1px);
 }
 
-.goto-topic .door {
+html[data-theme="skeuo"] .goto-topic .door {
     flex: none;
     width: 15px;
     margin-top: 3px;
 }
 
-.topic-title {
+html[data-theme="skeuo"] .topic-title {
     font-size: 15px;
     font-weight: 600;
     line-height: 1.5;
 }
 
-.cb-tag {
+html[data-theme="skeuo"] .cb-tag {
     padding: 1px 9px !important;
     border: 1px solid var(--lime-edge) !important;
     background: linear-gradient(var(--lime-hi), var(--lime) 60%, var(--lime-lo)) !important;
@@ -614,12 +614,12 @@ header::after {
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.goto-topic:hover .cb-tag {
+html[data-theme="skeuo"] .goto-topic:hover .cb-tag {
     border-color: #a9a9a9 !important;
     background: linear-gradient(#ffffff, #ececea) !important;
 }
 
-.hot-tag {
+html[data-theme="skeuo"] .hot-tag {
     border: 1px solid #b3261e;
     background-image: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.12)) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 8px rgba(255, 59, 48, 0.5);
@@ -627,14 +627,14 @@ header::after {
     text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3);
 }
 
-.btns-wrap {
+html[data-theme="skeuo"] .btns-wrap {
     flex: none;
     justify-content: flex-end;
     min-width: 72px;
 }
 
 /* 丸い大きな押しボタン */
-.cb-fab {
+html[data-theme="skeuo"] .cb-fab {
     z-index: 50;
     right: 24px !important;
     bottom: 24px !important;
@@ -659,11 +659,11 @@ header::after {
     transition: transform 0.12s var(--ease), box-shadow 0.12s;
 }
 
-.cb-fab:hover {
+html[data-theme="skeuo"] .cb-fab:hover {
     transform: translateY(-2px);
 }
 
-.cb-fab:active {
+html[data-theme="skeuo"] .cb-fab:active {
     box-shadow:
         inset 0 3px 8px rgba(0, 0, 0, 0.8),
         0 0 0 4px #e9e9e6,
@@ -675,7 +675,7 @@ header::after {
 
 /* ---------- トピックの中（コメントとファイル） ---------- */
 
-.header-title-pill div {
+html[data-theme="skeuo"] .header-title-pill div {
     padding: 7px 24px !important;
     border: 1px solid #000;
     background: linear-gradient(#4a4a4a, #1c1c1c) !important;
@@ -688,17 +688,17 @@ header::after {
     animation: rise 0.45s var(--ease) both;
 }
 
-.header-title-pill div:first-letter {
+html[data-theme="skeuo"] .header-title-pill div:first-letter {
     color: var(--lime);
 }
 
-.topic-detail-grid {
+html[data-theme="skeuo"] .topic-detail-grid {
     max-width: 1052px !important;
     gap: 20px !important;
 }
 
 /* つや消しの黒い筐体 */
-.cb-dark-panel {
+html[data-theme="skeuo"] .cb-dark-panel {
     padding: 14px !important;
     border: 1px solid #0a0a0a;
     border-radius: 20px !important;
@@ -709,12 +709,12 @@ header::after {
     animation: rise 0.5s var(--ease) both;
 }
 
-section.right .cb-dark-panel {
+html[data-theme="skeuo"] section.right .cb-dark-panel {
     animation-delay: 0.08s;
 }
 
 /* 筐体にはめ込まれた紙の画面 */
-.board {
+html[data-theme="skeuo"] .board {
     height: clamp(260px, 50vh, 520px) !important;
     padding: 2px 14px !important;
     border: 1px solid #0c0c0c;
@@ -723,65 +723,65 @@ section.right .cb-dark-panel {
     box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
-.board .cb-empty {
+html[data-theme="skeuo"] .board .cb-empty {
     padding: 14px 0;
 }
 
-.comment {
+html[data-theme="skeuo"] .comment {
     padding: 14px 2px !important;
     border-bottom: 1px solid #dcdcd9 !important;
     box-shadow: 0 1px 0 #fff;
     animation: rise 0.35s var(--ease) both;
 }
 
-.comment:last-child {
+html[data-theme="skeuo"] .comment:last-child {
     border-bottom: 0 !important;
     box-shadow: none;
 }
 
-.comment-meta {
+html[data-theme="skeuo"] .comment-meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
 }
 
-.comment-meta .fanio,
-.comment-meta .nantoka {
+html[data-theme="skeuo"] .comment-meta .fanio,
+html[data-theme="skeuo"] .comment-meta .nantoka {
     margin-left: 0;
 }
 
-.comment-time {
+html[data-theme="skeuo"] .comment-time {
     color: var(--mute);
     font-family: var(--font-geist-mono), ui-monospace, monospace;
     font-size: 11px !important;
     letter-spacing: 0.02em;
 }
 
-.comment-body {
+html[data-theme="skeuo"] .comment-body {
     padding-left: 32px;
     font-size: 14px !important;
     line-height: 1.7 !important;
 }
 
-.board .icon-btn:hover {
+html[data-theme="skeuo"] .board .icon-btn:hover {
     background: linear-gradient(#ffffff, #e6e6e4) !important;
 }
 
-.composer {
+html[data-theme="skeuo"] .composer {
     align-items: stretch !important;
 }
 
-.composer .cb-textarea {
+html[data-theme="skeuo"] .composer .cb-textarea {
     border-color: #0c0c0c !important;
     box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
-.composer .cb-textarea:focus {
+html[data-theme="skeuo"] .composer .cb-textarea:focus {
     box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.28), 0 0 0 3px rgba(217, 255, 63, 0.8), 0 0 16px rgba(217, 255, 63, 0.45);
 }
 
 /* 光るライムイエローの送信キー */
-.send-btn {
+html[data-theme="skeuo"] .send-btn {
     flex: none;
     display: grid;
     place-items: center;
@@ -795,36 +795,36 @@ section.right .cb-dark-panel {
     transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
 }
 
-.send-btn:hover:not(:disabled) {
+html[data-theme="skeuo"] .send-btn:hover:not(:disabled) {
     filter: brightness(1.05) drop-shadow(0 0 8px rgba(217, 255, 63, 0.5));
 }
 
-.send-btn:active:not(:disabled) {
+html[data-theme="skeuo"] .send-btn:active:not(:disabled) {
     box-shadow: inset 0 3px 6px rgba(60, 80, 0, 0.55), 0 1px 0 #5b7008;
     transform: translateY(4px);
 }
 
-.send-btn:disabled {
+html[data-theme="skeuo"] .send-btn:disabled {
     opacity: 0.5 !important;
     cursor: default !important;
     filter: saturate(0.4);
 }
 
-.send-btn img {
+html[data-theme="skeuo"] .send-btn img {
     width: 24px !important;
     height: 24px !important;
 }
 
-.files-panel {
+html[data-theme="skeuo"] .files-panel {
     color: #fff;
 }
 
-.files-inner {
+html[data-theme="skeuo"] .files-inner {
     padding: 2px !important;
     background: transparent !important;
 }
 
-.files-head {
+html[data-theme="skeuo"] .files-head {
     justify-content: flex-start !important;
     margin-bottom: 12px !important;
     padding: 0 0 12px !important;
@@ -835,7 +835,7 @@ section.right .cb-dark-panel {
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-.files-head span {
+html[data-theme="skeuo"] .files-head span {
     padding: 2px 12px;
     border: 1px solid var(--lime-edge);
     border-radius: 8px;
@@ -848,12 +848,12 @@ section.right .cb-dark-panel {
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.files-panel .cb-empty {
+html[data-theme="skeuo"] .files-panel .cb-empty {
     color: #bdbdbd !important;
 }
 
 /* ファイルは、筐体にあいた浅いくぼみに並ぶ */
-.file-row {
+html[data-theme="skeuo"] .file-row {
     padding: 7px 8px;
     border-radius: 14px;
     background: rgba(0, 0, 0, 0.22);
@@ -861,16 +861,16 @@ section.right .cb-dark-panel {
     transition: background 0.2s;
 }
 
-.file-row:hover {
+html[data-theme="skeuo"] .file-row:hover {
     background: rgba(0, 0, 0, 0.1);
 }
 
-.fileTitle {
+html[data-theme="skeuo"] .fileTitle {
     cursor: pointer;
 }
 
 /* アイコンに黒い部分があるので、白いタイルに載せる */
-.fileTitle img {
+html[data-theme="skeuo"] .fileTitle img {
     flex: none;
     width: 46px !important;
     height: 46px !important;
@@ -882,31 +882,31 @@ section.right .cb-dark-panel {
     transition: transform 0.2s var(--ease);
 }
 
-.fileTitle:hover img {
+html[data-theme="skeuo"] .fileTitle:hover img {
     transform: translateY(-2px) rotate(-4deg);
 }
 
-.file-name {
+html[data-theme="skeuo"] .file-name {
     color: #fff;
     font-size: 14px !important;
     text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
-.file-meta {
+html[data-theme="skeuo"] .file-meta {
     color: #bdbdbd;
     opacity: 1 !important;
 }
 
-.files-panel .icon-btn:hover {
+html[data-theme="skeuo"] .files-panel .icon-btn:hover {
     background: linear-gradient(#5a5a5a, #333) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.files-panel .icon-btn:active {
+html[data-theme="skeuo"] .files-panel .icon-btn:active {
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
 }
 
-.add-url {
+html[data-theme="skeuo"] .add-url {
     padding: 9px 22px !important;
     border: 1px solid var(--lime-edge) !important;
     border-radius: 999px !important;
@@ -918,17 +918,17 @@ section.right .cb-dark-panel {
     transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
 }
 
-.add-url:hover:not(:disabled) {
+html[data-theme="skeuo"] .add-url:hover:not(:disabled) {
     filter: brightness(1.05) drop-shadow(0 0 8px rgba(217, 255, 63, 0.45));
 }
 
-.add-url:active:not(:disabled) {
+html[data-theme="skeuo"] .add-url:active:not(:disabled) {
     box-shadow: inset 0 3px 6px rgba(60, 80, 0, 0.55);
     transform: translateY(3px);
 }
 
 /* ファイルを置く、へこんだ受け皿 */
-.drop-area {
+html[data-theme="skeuo"] .drop-area {
     border: 2px dashed #9d9d9a !important;
     border-radius: 18px !important;
     background: linear-gradient(#e6e6e3, #f4f4f2) !important;
@@ -940,12 +940,12 @@ section.right .cb-dark-panel {
     animation: rise 0.5s var(--ease) 0.14s both;
 }
 
-.drop-area:hover {
+html[data-theme="skeuo"] .drop-area:hover {
     border-color: #6f6f6c !important;
     box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.2), 0 1px 0 #fff;
 }
 
-.drop-area[data-drag="true"] {
+html[data-theme="skeuo"] .drop-area[data-drag="true"] {
     border-color: var(--lime-edge) !important;
     border-style: solid !important;
     background: linear-gradient(var(--lime), var(--lime-hi)) !important;
@@ -953,7 +953,7 @@ section.right .cb-dark-panel {
 }
 
 /* アップロードの進み具合（へこんだ溝を、光る液体が満たしていく） */
-.upload-progress {
+html[data-theme="skeuo"] .upload-progress {
     width: min(320px, 100%);
     height: 16px;
     margin: 14px auto 0;
@@ -965,7 +965,7 @@ section.right .cb-dark-panel {
     overflow: hidden;
 }
 
-.upload-progress-fill {
+html[data-theme="skeuo"] .upload-progress-fill {
     height: 100%;
     min-width: 10px;
     border-radius: 999px;
@@ -978,7 +978,7 @@ section.right .cb-dark-panel {
     animation: stripes 0.9s linear infinite;
 }
 
-.upload-progress-text {
+html[data-theme="skeuo"] .upload-progress-text {
     margin-top: 6px;
     font-family: var(--font-geist-mono), ui-monospace, monospace;
     font-size: 12px;
@@ -989,7 +989,7 @@ section.right .cb-dark-panel {
 /* ---------- 処理中の表示 ---------- */
 
 /* 画面中央：サーバーとやり取りしている間、ほかの操作を止めて進み具合を見せる */
-.busy-overlay {
+html[data-theme="skeuo"] .busy-overlay {
     position: fixed;
     inset: 0;
     z-index: 2000;
@@ -1001,7 +1001,7 @@ section.right .cb-dark-panel {
     animation: fade 0.18s ease-out both;
 }
 
-.busy-card {
+html[data-theme="skeuo"] .busy-card {
     width: min(340px, 100%);
     padding: 22px 22px 18px;
     border: 1px solid #bdbdba;
@@ -1012,7 +1012,7 @@ section.right .cb-dark-panel {
     animation: pop 0.26s var(--ease) both;
 }
 
-.busy-label {
+html[data-theme="skeuo"] .busy-label {
     font-size: 15px;
     font-weight: 800;
     line-height: 1.5;
@@ -1021,7 +1021,7 @@ section.right .cb-dark-panel {
 }
 
 /* 画面の上端：ページを移動している間に出る細いバー */
-.nav-progress {
+html[data-theme="skeuo"] .nav-progress {
     position: fixed;
     top: 0;
     right: 0;
@@ -1032,7 +1032,7 @@ section.right .cb-dark-panel {
     pointer-events: none;
 }
 
-.nav-progress-fill {
+html[data-theme="skeuo"] .nav-progress-fill {
     height: 100%;
     border-radius: 0 4px 4px 0;
     background: linear-gradient(90deg, var(--lime-lo), var(--lime-hi));
@@ -1041,14 +1041,14 @@ section.right .cb-dark-panel {
 }
 
 /* ページの中：データを読み込んでいる間、その場所に出す */
-.page-loading {
+html[data-theme="skeuo"] .page-loading {
     padding: 28px 12px 24px;
     text-align: center;
     animation: fade 0.25s ease-out both;
 }
 
 /* 画面下：時間のかかるアップロードを、ほかの操作を止めずに見せる */
-.upload-dock {
+html[data-theme="skeuo"] .upload-dock {
     position: fixed;
     right: 0;
     bottom: 18px;
@@ -1068,7 +1068,7 @@ section.right .cb-dark-panel {
     animation: rise 0.35s var(--ease) both;
 }
 
-.upload-dock-label {
+html[data-theme="skeuo"] .upload-dock-label {
     font-size: 13px;
     font-weight: 700;
     white-space: nowrap;
@@ -1077,21 +1077,84 @@ section.right .cb-dark-panel {
     text-shadow: 0 -1px 0 #000;
 }
 
-.upload-dock .upload-progress {
+html[data-theme="skeuo"] .upload-dock .upload-progress {
     margin-top: 10px;
     border-color: #000;
     background: linear-gradient(#141414, #2c2c2c);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
+/* ---------- テーマの切り替えスイッチ ---------- */
+
+html[data-theme="skeuo"] .theme-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 6px 4px 9px;
+    border: 1px solid #000;
+    border-radius: 999px;
+    background: linear-gradient(#4c4c4c, #1f1f1f);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: #d6d6d6;
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: 0;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+}
+
+html[data-theme="skeuo"] .theme-switch:active {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+html[data-theme="skeuo"] .theme-switch-track {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    border: 1px solid #000;
+    border-radius: 999px;
+    background: linear-gradient(#0f0f0f, #2a2a2a);
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+html[data-theme="skeuo"] .theme-switch-knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(var(--lime-hi), var(--lime) 50%, var(--lime-lo));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 6px rgba(217, 255, 63, 0.5);
+    transition: transform 0.2s var(--ease);
+}
+
+html[data-theme="skeuo"] .theme-switch[aria-checked="true"] .theme-switch-knob {
+    transform: translateX(14px);
+}
+
+/* ヘッダーでは右端に、ログイン画面では右上に置く */
+html[data-theme="skeuo"] .header-inner .theme-switch {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+}
+
+html[data-theme="skeuo"] .login-page-main .theme-switch {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+}
+
 /* ---------- ログイン ---------- */
 
-main.login-page-main {
+html[data-theme="skeuo"] main.login-page-main {
     padding: 8vh 16px 40px !important;
     font-family: inherit !important;
 }
 
-.login-card {
+html[data-theme="skeuo"] .login-card {
     width: min(360px, 100%) !important;
     padding: 26px 24px 30px;
     border: 1px solid #c8c8c5;
@@ -1101,7 +1164,7 @@ main.login-page-main {
     animation: rise 0.5s var(--ease) both;
 }
 
-.login-title {
+html[data-theme="skeuo"] .login-title {
     border: 1px solid #000;
     border-radius: 12px !important;
     background: linear-gradient(#484848, #1a1a1a) !important;
@@ -1112,11 +1175,11 @@ main.login-page-main {
     text-shadow: 0 -1px 0 #000;
 }
 
-.login-form {
+html[data-theme="skeuo"] .login-form {
     margin-top: 28px !important;
 }
 
-.login-btn {
+html[data-theme="skeuo"] .login-btn {
     height: 48px !important;
     border: 1px solid #a3a3a3 !important;
     background: linear-gradient(#ffffff, #e6e6e4) !important;
@@ -1126,11 +1189,11 @@ main.login-page-main {
     transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
 }
 
-.login-btn:hover:not(:disabled) {
+html[data-theme="skeuo"] .login-btn:hover:not(:disabled) {
     filter: brightness(1.04);
 }
 
-.login-btn:active:not(:disabled) {
+html[data-theme="skeuo"] .login-btn:active:not(:disabled) {
     box-shadow: var(--pressed);
     transform: translateY(3px);
 }
@@ -1138,32 +1201,32 @@ main.login-page-main {
 /* ---------- スマホ ---------- */
 
 @media (max-width: 600px) {
-    header {
+    html[data-theme="skeuo"] header {
         font-size: 17px !important;
     }
 
-    .list-wrap {
+    html[data-theme="skeuo"] .list-wrap {
         gap: 18px;
         margin-top: 18px !important;
     }
 
-    .cb-panel {
+    html[data-theme="skeuo"] .cb-panel {
         padding: 14px !important;
     }
 
-    .topic-panel {
+    html[data-theme="skeuo"] .topic-panel {
         padding: 4px 12px 10px !important;
     }
 
-    .goto-topic {
+    html[data-theme="skeuo"] .goto-topic {
         padding: 12px 6px !important;
     }
 
-    .comment-body {
+    html[data-theme="skeuo"] .comment-body {
         padding-left: 0;
     }
 
-    .cb-fab {
+    html[data-theme="skeuo"] .cb-fab {
         right: 20px !important;
         bottom: 20px !important;
     }
@@ -1171,8 +1234,8 @@ main.login-page-main {
 
 /* 動きを減らす設定の人には、動きを付けない */
 @media (prefers-reduced-motion: reduce) {
-    *,
-    *::after {
+    html[data-theme="skeuo"] *,
+    html[data-theme="skeuo"] *::after {
         animation: none !important;
         transition: none !important;
     }

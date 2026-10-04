@@ -8,6 +8,7 @@ import BackButton from "@/components/BackButton";
 import PushEnableButton from "@/components/PushEnableButton";
 import { PageLoading, useBusyOverlay } from "@/components/BusyOverlay";
 import { startNavProgress } from "@/components/NavProgress";
+import ThemeSwitch from "@/components/ThemeSwitch";
 
 type Category = { id: string; name: string };
 
@@ -568,6 +569,7 @@ export default function TopicsPage() {
           <BackButton className="backlink" fallbackHref="/login" />
           <img src="/images/topic-icon.svg" className="top-icon" alt="" />{" "}
           <span className="first-letter">T</span>opics
+          <ThemeSwitch />
         </div>
       </header>
 

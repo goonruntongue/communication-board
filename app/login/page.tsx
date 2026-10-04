@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchShortId } from "@/lib/shortId";
 import { startNavProgress } from "@/components/NavProgress";
+import ThemeSwitch from "@/components/ThemeSwitch";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -88,6 +89,7 @@ export default function LoginPage() {
           'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
       }}
     >
+      <ThemeSwitch />
       <div className="login-card" style={{ width: 360 }}>
         <div
           className="login-title"

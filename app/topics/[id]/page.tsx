@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchShortId } from "@/lib/shortId";
 import BackButton from "@/components/BackButton";
+import ThemeSwitch from "@/components/ThemeSwitch";
 import {
   BusyModal,
   PageLoading,
@@ -857,6 +858,7 @@ export default function TopicDetailPage() {
             style={{ width: 32, height: 32 }}
           />
           <span className="first-letter">D</span>ata
+          <ThemeSwitch />
         </div>
       </header>
 
