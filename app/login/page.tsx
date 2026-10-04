@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchShortId } from "@/lib/shortId";
+import { startNavProgress } from "@/components/NavProgress";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function LoginPage() {
         return;
       }
 
+      startNavProgress();
       router.replace("/topics");
     };
 

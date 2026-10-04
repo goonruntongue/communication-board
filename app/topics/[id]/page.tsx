@@ -5,6 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchShortId } from "@/lib/shortId";
 import BackButton from "@/components/BackButton";
+import {
+  BusyModal,
+  PageLoading,
+  ProgressBar,
+  useBusyOverlay,
+} from "@/components/BusyOverlay";
+
+// アップロードがこの時間を超えたら、中央の表示を画面下へ移して他の操作をできるようにする
+const UPLOAD_DOCK_AFTER_MS = 1800;
 
 type Topic = {
   id: string;
@@ -107,6 +116,11 @@ export default function TopicDetailPage() {
   const [fileBusy, setFileBusy] = useState(false);
   // アップロードの進み具合（0〜100）。アップロードしていないときは null
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  // アップロード中のファイル名（していないときは null）と、表示を画面下へ移したかどうか
+  const [uploadName, setUploadName] = useState<string | null>(null);
+  const [uploadDocked, setUploadDocked] = useState(false);
+  // サーバーとやり取りしている間、画面中央に「処理中」を出す
+  const { overlay, withBusy } = useBusyOverlay();
 
   // ✅ ファイル名編集モーダル
   const [showEditFileModal, setShowEditFileModal] = useState(false);
@@ -668,6 +682,14 @@ export default function TopicDetailPage() {
       return;
     }
 
+    // まず画面中央に出し、長引くようなら画面下へ移して他の操作をできるようにする
+    setUploadName(file.name);
+    setUploadDocked(false);
+    const dockTimer = setTimeout(
+      () => setUploadDocked(true),
+      UPLOAD_DOCK_AFTER_MS,
+    );
+
     try {
       setFileBusy(true);
 
@@ -749,8 +771,10 @@ export default function TopicDetailPage() {
       console.error(e);
       alert(e?.message ?? "upload error");
     } finally {
+      clearTimeout(dockTimer);
       setFileBusy(false);
       setUploadProgress(null);
+      setUploadName(null);
     }
   }
 
@@ -783,7 +807,7 @@ export default function TopicDetailPage() {
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendComment();
+      withBusy("コメントを送信しています", sendComment);
     }
   }
 
@@ -860,7 +884,7 @@ export default function TopicDetailPage() {
 
       {loading && (
         <div className="cb-loading" style={{ color: "#fff", textAlign: "center", padding: 20 }}>
-          Loading...
+          <PageLoading label="コメントとファイルを読み込み中" />
         </div>
       )}
 
@@ -977,7 +1001,9 @@ export default function TopicDetailPage() {
                           className="icon-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteComment(c.id);
+                            withBusy("コメントを削除しています", () =>
+                              deleteComment(c.id),
+                            );
                           }}
                           style={{
                             border: "none",
@@ -1042,7 +1068,7 @@ export default function TopicDetailPage() {
               />
               <button
                 className="send-btn"
-                onClick={sendComment}
+                onClick={() => withBusy("コメントを送信しています", sendComment)}
                 disabled={sending || !newBody.trim()}
                 style={{
                   width: 46,
@@ -1182,7 +1208,9 @@ export default function TopicDetailPage() {
                             className="icon-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              downloadFile(f.file_url, f.file_name);
+                              withBusy("ダウンロードを準備しています", () =>
+                                downloadFile(f.file_url, f.file_name),
+                              );
                             }}
                             style={{
                               width: 34,
@@ -1208,7 +1236,9 @@ export default function TopicDetailPage() {
                             className="icon-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteFile(f.id);
+                              withBusy("ファイルを削除しています", () =>
+                                deleteFile(f.id),
+                              );
                             }}
                             style={{
                               width: 34,
@@ -1309,25 +1339,6 @@ export default function TopicDetailPage() {
                 <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>
                   またはクリックしてファイルを選択
                 </div>
-                {uploadProgress !== null && (
-                  <>
-                    <div
-                      className="upload-progress"
-                      role="progressbar"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={uploadProgress}
-                    >
-                      <div
-                        className="upload-progress-fill"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <div className="upload-progress-text">
-                      {uploadProgress}%
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </section>
@@ -1402,7 +1413,9 @@ export default function TopicDetailPage() {
               </button>
               <button
                 className="cb-btn cb-btn-primary"
-                onClick={confirmEditComment}
+                onClick={() =>
+                  withBusy("コメントを更新しています", confirmEditComment)
+                }
                 disabled={editLoading}
                 style={{
                   background: "#000",
@@ -1489,7 +1502,9 @@ export default function TopicDetailPage() {
               </button>
               <button
                 className="cb-btn cb-btn-primary"
-                onClick={confirmEditFileName}
+                onClick={() =>
+                  withBusy("タイトルを更新しています", confirmEditFileName)
+                }
                 disabled={editFileLoading}
                 style={{
                   background: "#000",
@@ -1577,7 +1592,7 @@ export default function TopicDetailPage() {
               </button>
               <button
                 className="cb-btn cb-btn-primary"
-                onClick={addFileByUrl}
+                onClick={() => withBusy("URLを登録しています", addFileByUrl)}
                 disabled={fileBusy || !newFileName.trim() || !newFileUrl.trim()}
                 style={{
                   background: "#000",
@@ -1595,6 +1610,24 @@ export default function TopicDetailPage() {
           </div>
         </div>
       )}
+
+      {uploadName !== null &&
+        (uploadDocked ? (
+          <div className="upload-dock" role="status">
+            <div className="upload-dock-label">
+              {(uploadProgress ?? 0) < 100 ? "アップロード中" : "仕上げています"}
+              ：{uploadName}
+            </div>
+            <ProgressBar percent={uploadProgress ?? 0} />
+          </div>
+        ) : (
+          <BusyModal
+            label={`アップロードしています：${uploadName}`}
+            percent={uploadProgress ?? 0}
+          />
+        ))}
+
+      {overlay}
 
       <style jsx global>{`
         @media (min-width: 880px) {

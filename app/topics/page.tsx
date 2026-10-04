@@ -6,6 +6,8 @@ import { fetchShortId } from "@/lib/shortId";
 import { useRouter } from "next/navigation";
 import BackButton from "@/components/BackButton";
 import PushEnableButton from "@/components/PushEnableButton";
+import { PageLoading, useBusyOverlay } from "@/components/BusyOverlay";
+import { startNavProgress } from "@/components/NavProgress";
 
 type Category = { id: string; name: string };
 
@@ -27,6 +29,8 @@ export default function TopicsPage() {
 
   // ログイン中ユーザーの内部ID（katsu / kimi。表示名は fanio / nantoka）
   const [myId, setMyId] = useState<string | null>(null);
+  // サーバーとやり取りしている間、画面中央に「処理中」を出す
+  const { overlay, withBusy } = useBusyOverlay();
 
   // カテゴリ一覧 & 選択中カテゴリ（フィルタ用）
   const [categories, setCategories] = useState<Category[]>([]);
@@ -161,6 +165,7 @@ export default function TopicsPage() {
 
       const id = await fetchShortId(user?.email);
       if (!id) {
+        startNavProgress();
         router.replace("/login");
         return;
       }
@@ -663,13 +668,14 @@ export default function TopicsPage() {
                 }}
                 disabled={categoryCreating}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") createCategory();
+                  if (e.key === "Enter")
+                    withBusy("カテゴリを作成しています", createCategory);
                 }}
               />
               <button
                 className="cb-btn cb-btn-primary"
                 type="button"
-                onClick={createCategory}
+                onClick={() => withBusy("カテゴリを作成しています", createCategory)}
                 disabled={categoryCreating}
                 style={{
                   height: 34,
@@ -779,7 +785,7 @@ export default function TopicsPage() {
             position: "relative",
           }}
         >
-          {loading && <p>Loading...</p>}
+          {loading && <PageLoading label="トピックを読み込み中" />}
 
           {!loading &&
             Object.entries(grouped).map(([date, items]) => (
@@ -810,7 +816,10 @@ export default function TopicsPage() {
                       margin: "1em 0",
                       cursor: "pointer",
                     }}
-                    onClick={() => router.push(`/topics/${topic.id}`)}
+                    onClick={() => {
+                      startNavProgress();
+                      router.push(`/topics/${topic.id}`);
+                    }}
                   >
                     <div
                       style={{
@@ -1064,13 +1073,16 @@ export default function TopicsPage() {
                     }}
                     disabled={modalCategoryCreating}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") createCategoryInModal();
+                      if (e.key === "Enter")
+                        withBusy("カテゴリを作成しています", createCategoryInModal);
                     }}
                   />
                   <button
                     className="cb-btn cb-btn-primary"
                     type="button"
-                    onClick={createCategoryInModal}
+                    onClick={() =>
+                      withBusy("カテゴリを作成しています", createCategoryInModal)
+                    }
                     disabled={modalCategoryCreating}
                     style={{
                       height: 34,
@@ -1140,7 +1152,7 @@ export default function TopicsPage() {
               >
                 キャンセル
               </button>
-              <button className="cb-btn cb-btn-primary" onClick={createTopic} style={{ marginLeft: 10 }}>
+              <button className="cb-btn cb-btn-primary" onClick={() => withBusy("トピックを作成しています", createTopic)} style={{ marginLeft: 10 }}>
                 作成
               </button>
             </div>
@@ -1248,7 +1260,7 @@ export default function TopicsPage() {
               </button>
               <button
                 className="cb-btn cb-btn-primary"
-                onClick={confirmEdit}
+                onClick={() => withBusy("トピックを更新しています", confirmEdit)}
                 disabled={editLoading}
                 style={{
                   background: "#111",
@@ -1324,7 +1336,7 @@ export default function TopicsPage() {
               </button>
               <button
                 className="cb-btn cb-btn-danger"
-                onClick={confirmDelete}
+                onClick={() => withBusy("トピックを削除しています", confirmDelete)}
                 disabled={deleteLoading}
                 style={{
                   background: "#111",
@@ -1402,7 +1414,9 @@ export default function TopicsPage() {
 
               <button
                 className="cb-btn cb-btn-danger"
-                onClick={confirmDeleteCategory}
+                onClick={() =>
+                  withBusy("カテゴリを削除しています", confirmDeleteCategory)
+                }
                 disabled={deleteCategoryLoading}
                 style={{
                   background: "#111",
@@ -1420,6 +1434,8 @@ export default function TopicsPage() {
           </div>
         </div>
       )}
+
+      {overlay}
     </main>
   );
 }

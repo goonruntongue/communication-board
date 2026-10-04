@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { startNavProgress } from "@/components/NavProgress";
 
 type Props = {
   className?: string;
@@ -16,6 +17,7 @@ export default function BackButton({
   const router = useRouter();
 
   const handleBack = () => {
+    startNavProgress();
     // 履歴があるなら戻る。なければフォールバックへ。
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back(); // history.back() 相当（Next推奨）
