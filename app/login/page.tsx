@@ -86,8 +86,9 @@ export default function LoginPage() {
           'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
       }}
     >
-      <div style={{ width: 360 }}>
+      <div className="login-card" style={{ width: 360 }}>
         <div
+          className="login-title"
           style={{
             background: "#333",
             color: "#fff",
@@ -103,12 +104,13 @@ export default function LoginPage() {
 
         <div style={{ marginTop: 40 }} className="login-form">
           {error && (
-            <p style={{ color: "crimson", marginBottom: 12, lineHeight: 1.4 }}>
+            <p className="cb-error" style={{ color: "crimson", marginBottom: 12, lineHeight: 1.4 }}>
               {error}
             </p>
           )}
 
           <button
+            className="login-btn"
             type="button"
             onClick={onGoogleLogin}
             disabled={loading}

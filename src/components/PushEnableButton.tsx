@@ -107,8 +107,8 @@ export default function PushEnableButton() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      <div style={{ fontSize: 12, color: "#fff" }}>
+    <div className="push-box" style={{ display: "grid", gap: 6 }}>
+      <div className="push-label" style={{ fontSize: 12, color: "#fff" }}>
         通知許可:{" "}
         <b>
           {permission === "unsupported"
@@ -122,6 +122,7 @@ export default function PushEnableButton() {
       </div>
 
       <button
+        className="push-btn"
         type="button"
         onClick={enable}
         disabled={busy}
@@ -145,7 +146,7 @@ export default function PushEnableButton() {
       </button>
 
       {msg && (
-        <div style={{ fontSize: 12, color: "#ffe94d", lineHeight: 1.4 }}>
+        <div className="push-msg" style={{ fontSize: 12, color: "#ffe94d", lineHeight: 1.4 }}>
           {msg}
         </div>
       )}

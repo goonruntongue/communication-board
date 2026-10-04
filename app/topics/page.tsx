@@ -556,8 +556,8 @@ export default function TopicsPage() {
   }
 
   return (
-    <main style={{ padding: 20, background: "#666", minHeight: "100vh" }}>
-      <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
+    <main className="cb-page" style={{ padding: 20, background: "#666", minHeight: "100vh" }}>
+      <header className="cb-header" style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
         <PushEnableButton />
         <div className="header-inner">
           <BackButton className="backlink" fallbackHref="/login" />
@@ -569,6 +569,7 @@ export default function TopicsPage() {
       {/* カテゴリUI */}
       <div className="list-wrap" style={{ marginTop: 10 }}>
         <div
+          className="cb-panel cat-panel"
           style={{
             background: "#fff",
             padding: 16,
@@ -576,12 +577,14 @@ export default function TopicsPage() {
             marginBottom: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="cat-head" style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ fontWeight: 700 }} className="cat-title">
               カテゴリー
             </div>
 
             <button
+              className="cb-chip cb-chip-dark"
+              data-active={selectedCategoryIds.length === 0}
               type="button"
               onClick={() => setSelectedCategoryIds([])}
               style={{
@@ -599,6 +602,8 @@ export default function TopicsPage() {
             </button>
 
             <button
+              className="cb-chip cb-chip-dark"
+              data-active={categoryManageMode}
               type="button"
               onClick={() => setCategoryManageMode((v) => !v)}
               style={{
@@ -616,6 +621,7 @@ export default function TopicsPage() {
             </button>
 
             <button
+              className="cb-round"
               type="button"
               onClick={() => {
                 setShowCategoryInput((v) => !v);
@@ -642,8 +648,9 @@ export default function TopicsPage() {
           </div>
 
           {showCategoryInput && (
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <div className="cb-inline-form" style={{ marginTop: 10, display: "flex", gap: 8 }}>
               <input
+                className="cb-input"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="新しいカテゴリ名"
@@ -660,6 +667,7 @@ export default function TopicsPage() {
                 }}
               />
               <button
+                className="cb-btn cb-btn-primary"
                 type="button"
                 onClick={createCategory}
                 disabled={categoryCreating}
@@ -680,7 +688,7 @@ export default function TopicsPage() {
           )}
 
           {categoryError && (
-            <div style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
+            <div className="cb-error" style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
               {categoryError}
             </div>
           )}
@@ -689,7 +697,7 @@ export default function TopicsPage() {
             style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}
           >
             {categories.length === 0 && (
-              <div style={{ fontSize: 12, color: "#666" }}>
+              <div className="cb-empty" style={{ fontSize: 12, color: "#666" }}>
                 （カテゴリがありません）
               </div>
             )}
@@ -698,6 +706,8 @@ export default function TopicsPage() {
               const active = selectedCategoryIds.includes(c.id);
               return (
                 <button
+                  className="cb-chip"
+                  data-active={active}
                   key={c.id}
                   type="button"
                   onClick={() => toggleCategory(c.id)}
@@ -718,6 +728,7 @@ export default function TopicsPage() {
 
                   {categoryManageMode && (
                     <span
+                      className="chip-x"
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
@@ -752,7 +763,7 @@ export default function TopicsPage() {
           </div>
 
           {selectedCategoryIds.length > 0 && (
-            <div style={{ marginTop: 10, fontSize: 12, color: "#444" }}>
+            <div className="cb-note" style={{ marginTop: 10, fontSize: 12, color: "#444" }}>
               絞り込み中：{selectedCategoryIds.length}件
             </div>
           )}
@@ -760,6 +771,7 @@ export default function TopicsPage() {
 
         {/* トピック一覧 */}
         <div
+          className="cb-panel topic-panel"
           style={{
             background: "#ccc",
             padding: 20,
@@ -773,6 +785,7 @@ export default function TopicsPage() {
             Object.entries(grouped).map(([date, items]) => (
               <div key={date}>
                 <div
+                  className="date-pill"
                   style={{
                     background: "#fff",
                     display: "inline-block",
@@ -813,6 +826,7 @@ export default function TopicsPage() {
                         className="door"
                       />
                       <div
+                        className="topic-title"
                         style={{
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -831,6 +845,7 @@ export default function TopicsPage() {
 
                         {topic.categories?.map((c) => (
                           <span
+                            className="cb-tag"
                             key={c.id}
                             style={{
                               border: "1px solid #bbb",
@@ -848,6 +863,7 @@ export default function TopicsPage() {
 
                         {hotIds.has(topic.id) && (
                           <span
+                            className="hot-tag"
                             style={{
                               background: "#ff3b30",
                               color: "#fff",
@@ -869,7 +885,7 @@ export default function TopicsPage() {
                       className="btns-wrap"
                     >
                       <button
-                        className="edit-btn"
+                        className="edit-btn icon-btn"
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -893,7 +909,7 @@ export default function TopicsPage() {
                       {myId === topic.created_by && (
                         <button
                           type="button"
-                          className="del-btn"
+                          className="del-btn icon-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             openDeleteModal(topic);
@@ -907,6 +923,7 @@ export default function TopicsPage() {
                           title="削除"
                         >
                           <img
+                            className="icon-invert"
                             src="/images/trash-can.svg"
                             alt=""
                             style={{ width: 18, height: 18, opacity: 0.9 }}
@@ -923,6 +940,7 @@ export default function TopicsPage() {
 
       {/* ＋ボタン */}
       <button
+        className="cb-fab"
         onClick={() => {
           setCreateCategoryIds([]);
           setShowModalCategoryInput(false);
@@ -949,6 +967,7 @@ export default function TopicsPage() {
       {/* 新規作成モーダル */}
       {showCreateModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -962,6 +981,7 @@ export default function TopicsPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               padding: 20,
@@ -972,6 +992,7 @@ export default function TopicsPage() {
           >
             <h3>新規トピックを作成</h3>
             <input
+              className="cb-input"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="トピック名を入力"
@@ -994,11 +1015,12 @@ export default function TopicsPage() {
                   marginBottom: 6,
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 700 }}>
+                <div className="cb-label" style={{ fontSize: 12, fontWeight: 700 }}>
                   カテゴリー（複数選択）
                 </div>
 
                 <button
+                  className="cb-round"
                   type="button"
                   onClick={() => {
                     setShowModalCategoryInput((v) => !v);
@@ -1026,8 +1048,9 @@ export default function TopicsPage() {
               </div>
 
               {showModalCategoryInput && (
-                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <div className="cb-inline-form" style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <input
+                    className="cb-input"
                     value={newModalCategoryName}
                     onChange={(e) => setNewModalCategoryName(e.target.value)}
                     placeholder="新しいカテゴリ名"
@@ -1045,6 +1068,7 @@ export default function TopicsPage() {
                     }}
                   />
                   <button
+                    className="cb-btn cb-btn-primary"
                     type="button"
                     onClick={createCategoryInModal}
                     disabled={modalCategoryCreating}
@@ -1066,6 +1090,7 @@ export default function TopicsPage() {
 
               {modalCategoryError && (
                 <div
+                  className="cb-error"
                   style={{ marginBottom: 8, fontSize: 12, color: "crimson" }}
                 >
                   {modalCategoryError}
@@ -1074,7 +1099,7 @@ export default function TopicsPage() {
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {categories.length === 0 && (
-                  <div style={{ fontSize: 12, color: "#666" }}>
+                  <div className="cb-empty" style={{ fontSize: 12, color: "#666" }}>
                     （カテゴリがありません）
                   </div>
                 )}
@@ -1083,6 +1108,8 @@ export default function TopicsPage() {
                   const active = createCategoryIds.includes(c.id);
                   return (
                     <button
+                      className="cb-chip"
+                      data-active={active}
                       key={c.id}
                       type="button"
                       onClick={() => toggleCreateCategory(c.id)}
@@ -1103,8 +1130,9 @@ export default function TopicsPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 15, textAlign: "right" }}>
+            <div className="cb-actions" style={{ marginTop: 15, textAlign: "right" }}>
               <button
+                className="cb-btn"
                 onClick={() => {
                   setShowCreateModal(false);
                   setCreateCategoryIds([]);
@@ -1112,7 +1140,7 @@ export default function TopicsPage() {
               >
                 キャンセル
               </button>
-              <button onClick={createTopic} style={{ marginLeft: 10 }}>
+              <button className="cb-btn cb-btn-primary" onClick={createTopic} style={{ marginLeft: 10 }}>
                 作成
               </button>
             </div>
@@ -1123,6 +1151,7 @@ export default function TopicsPage() {
       {/* 編集モーダル */}
       {showEditModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -1135,6 +1164,7 @@ export default function TopicsPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               padding: 20,
@@ -1146,6 +1176,7 @@ export default function TopicsPage() {
             <h3 style={{ marginBottom: 10 }}>トピック名を編集</h3>
 
             <input
+              className="cb-input"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="新しいトピック名"
@@ -1154,13 +1185,13 @@ export default function TopicsPage() {
             />
 
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              <div className="cb-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
                 カテゴリー（複数選択）
               </div>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {categories.length === 0 && (
-                  <div style={{ fontSize: 12, color: "#666" }}>
+                  <div className="cb-empty" style={{ fontSize: 12, color: "#666" }}>
                     （カテゴリがありません）
                   </div>
                 )}
@@ -1169,6 +1200,8 @@ export default function TopicsPage() {
                   const active = editCategoryIds.includes(c.id);
                   return (
                     <button
+                      className="cb-chip"
+                      data-active={active}
                       key={c.id}
                       type="button"
                       onClick={() => toggleEditCategory(c.id)}
@@ -1192,12 +1225,13 @@ export default function TopicsPage() {
             </div>
 
             {editError && (
-              <p style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
+              <p className="cb-error" style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
                 {editError}
               </p>
             )}
 
             <div
+              className="cb-actions"
               style={{
                 marginTop: 15,
                 display: "flex",
@@ -1206,12 +1240,14 @@ export default function TopicsPage() {
               }}
             >
               <button
+                className="cb-btn"
                 onClick={() => setShowEditModal(false)}
                 disabled={editLoading}
               >
                 キャンセル
               </button>
               <button
+                className="cb-btn cb-btn-primary"
                 onClick={confirmEdit}
                 disabled={editLoading}
                 style={{
@@ -1234,6 +1270,7 @@ export default function TopicsPage() {
       {/* 削除モーダル */}
       {showDeleteModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -1246,6 +1283,7 @@ export default function TopicsPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               padding: 20,
@@ -1256,19 +1294,20 @@ export default function TopicsPage() {
           >
             <h3 style={{ marginBottom: 10 }}>このトピックを削除しますか？</h3>
 
-            <div style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.5 }}>
+            <div className="cb-modal-text" style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.5 }}>
               対象：<b>{deleteTarget?.title}</b>
               <br />
               削除すると元に戻せません。
             </div>
 
             {deleteError && (
-              <p style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
+              <p className="cb-error" style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
                 {deleteError}
               </p>
             )}
 
             <div
+              className="cb-actions"
               style={{
                 marginTop: 15,
                 display: "flex",
@@ -1277,12 +1316,14 @@ export default function TopicsPage() {
               }}
             >
               <button
+                className="cb-btn"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleteLoading}
               >
                 キャンセル
               </button>
               <button
+                className="cb-btn cb-btn-danger"
                 onClick={confirmDelete}
                 disabled={deleteLoading}
                 style={{
@@ -1305,6 +1346,7 @@ export default function TopicsPage() {
       {/* カテゴリ削除モーダル */}
       {showDeleteCategoryModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -1318,6 +1360,7 @@ export default function TopicsPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               padding: 20,
@@ -1328,19 +1371,20 @@ export default function TopicsPage() {
           >
             <h3 style={{ marginBottom: 10 }}>カテゴリを削除しますか？</h3>
 
-            <div style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.6 }}>
+            <div className="cb-modal-text" style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.6 }}>
               対象：<b>{deleteCategoryTarget?.name}</b>
               <br />
               このカテゴリが付いているトピックからも外れます。
             </div>
 
             {deleteCategoryError && (
-              <p style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
+              <p className="cb-error" style={{ color: "crimson", marginTop: 10, lineHeight: 1.4 }}>
                 {deleteCategoryError}
               </p>
             )}
 
             <div
+              className="cb-actions"
               style={{
                 marginTop: 15,
                 display: "flex",
@@ -1349,6 +1393,7 @@ export default function TopicsPage() {
               }}
             >
               <button
+                className="cb-btn"
                 onClick={() => setShowDeleteCategoryModal(false)}
                 disabled={deleteCategoryLoading}
               >
@@ -1356,6 +1401,7 @@ export default function TopicsPage() {
               </button>
 
               <button
+                className="cb-btn cb-btn-danger"
                 onClick={confirmDeleteCategory}
                 disabled={deleteCategoryLoading}
                 style={{

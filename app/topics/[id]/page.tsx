@@ -31,6 +31,42 @@ type FileRow = {
   created_at: string;
 };
 
+/**
+ * fetch と同じ内容を送りつつ、どこまで送れたかを onProgress(0〜100) で知らせる。
+ * fetch では送信の進み具合が取れないため、XMLHttpRequest を使う。
+ */
+function postWithProgress(
+  url: string,
+  headers: Record<string, string>,
+  body: FormData,
+  onProgress: (percent: number) => void,
+): Promise<{ ok: boolean; json: any }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    Object.entries(headers).forEach(([key, value]) =>
+      xhr.setRequestHeader(key, value),
+    );
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      try {
+        resolve({
+          ok: xhr.status >= 200 && xhr.status < 300,
+          json: JSON.parse(xhr.responseText),
+        });
+      } catch (e) {
+        reject(e);
+      }
+    };
+    xhr.onerror = () => reject(new TypeError("Failed to fetch"));
+    xhr.send(body);
+  });
+}
+
 export default function TopicDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -69,6 +105,8 @@ export default function TopicDetailPage() {
   const [newFileName, setNewFileName] = useState("");
   const [newFileUrl, setNewFileUrl] = useState("");
   const [fileBusy, setFileBusy] = useState(false);
+  // アップロードの進み具合（0〜100）。アップロードしていないときは null
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   // ✅ ファイル名編集モーダル
   const [showEditFileModal, setShowEditFileModal] = useState(false);
@@ -661,17 +699,15 @@ export default function TopicDetailPage() {
       fd.append("file", file);
       fd.append("orig_name", file.name);
 
-      const upRes = await fetch(SAKURA_UPLOAD_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "X-Upload-Token": token,
-        },
-        body: fd,
-      });
+      setUploadProgress(0);
+      const { ok: upOk, json: upJson } = await postWithProgress(
+        SAKURA_UPLOAD_ENDPOINT,
+        { "X-Upload-Token": token },
+        fd,
+        setUploadProgress,
+      );
 
-      const upJson = await upRes.json();
-
-      if (!upRes.ok || !upJson?.ok) {
+      if (!upOk || !upJson?.ok) {
         alert(upJson?.error ?? "upload failed");
         return;
       }
@@ -714,6 +750,7 @@ export default function TopicDetailPage() {
       alert(e?.message ?? "upload error");
     } finally {
       setFileBusy(false);
+      setUploadProgress(null);
     }
   }
 
@@ -786,8 +823,8 @@ export default function TopicDetailPage() {
   }
 
   return (
-    <main style={{ background: "#666", minHeight: "100vh" }}>
-      <header style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
+    <main className="cb-page" style={{ background: "#666", minHeight: "100vh" }}>
+      <header className="cb-header" style={{ color: "#fff", textAlign: "center", fontSize: 20 }}>
         <div className="header-inner">
           <BackButton className="backlink" fallbackHref="/login" />
           <img
@@ -822,7 +859,7 @@ export default function TopicDetailPage() {
       </div>
 
       {loading && (
-        <div style={{ color: "#fff", textAlign: "center", padding: 20 }}>
+        <div className="cb-loading" style={{ color: "#fff", textAlign: "center", padding: 20 }}>
           Loading...
         </div>
       )}
@@ -841,7 +878,7 @@ export default function TopicDetailPage() {
         >
           {/* LEFT: comments */}
           <section
-            className="left"
+            className="left cb-dark-panel"
             style={{ background: "#8a8a8a", borderRadius: 12, padding: 12 }}
           >
             <div
@@ -856,13 +893,14 @@ export default function TopicDetailPage() {
               }}
             >
               {comments.length === 0 && (
-                <div style={{ color: "#333", opacity: 0.8 }}>
+                <div className="cb-empty" style={{ color: "#333", opacity: 0.8 }}>
                   まだコメントがありません
                 </div>
               )}
 
               {comments.map((c) => (
                 <div
+                  className="comment"
                   key={c.id}
                   style={{
                     padding: "10px 8px",
@@ -872,6 +910,7 @@ export default function TopicDetailPage() {
                   }}
                 >
                   <div
+                    className="comment-head"
                     style={{ display: "flex", alignItems: "center", gap: 8 }}
                   >
                     <img
@@ -879,12 +918,13 @@ export default function TopicDetailPage() {
                       alt=""
                       style={{ width: 24, height: 24 }}
                     />
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>
+                    <div className="comment-meta" style={{ fontSize: 14, fontWeight: 700 }}>
                       <span className={displayName(c.created_by)}>
                         {displayName(c.created_by)}
                       </span>
 
                       <span
+                        className="comment-time"
                         style={{
                           fontWeight: 400,
                           marginLeft: 10,
@@ -912,7 +952,7 @@ export default function TopicDetailPage() {
                         style={{ marginLeft: "auto", display: "flex", gap: 6 }}
                       >
                         <button
-                          className="edit-btn"
+                          className="edit-btn icon-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditCommentModal(c);
@@ -934,6 +974,7 @@ export default function TopicDetailPage() {
                         </button>
 
                         <button
+                          className="icon-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteComment(c.id);
@@ -958,6 +999,7 @@ export default function TopicDetailPage() {
                   </div>
 
                   <div
+                    className="comment-body"
                     style={{
                       fontSize: 13,
                       lineHeight: 1.5,
@@ -972,6 +1014,7 @@ export default function TopicDetailPage() {
             </div>
 
             <div
+              className="composer"
               style={{
                 marginTop: 12,
                 display: "flex",
@@ -980,6 +1023,7 @@ export default function TopicDetailPage() {
               }}
             >
               <textarea
+                className="cb-textarea"
                 value={newBody}
                 onChange={(e) => setNewBody(e.target.value)}
                 onKeyDown={onKeyDownSend}
@@ -997,6 +1041,7 @@ export default function TopicDetailPage() {
                 }}
               />
               <button
+                className="send-btn"
                 onClick={sendComment}
                 disabled={sending || !newBody.trim()}
                 style={{
@@ -1022,12 +1067,15 @@ export default function TopicDetailPage() {
           {/* RIGHT: files */}
           <section className="right" style={{ display: "grid", gap: 14 }}>
             <div
+              className="cb-dark-panel files-panel"
               style={{ background: "#8a8a8a", borderRadius: 12, padding: 12 }}
             >
               <div
+                className="files-inner"
                 style={{ background: "#bdbdbd", borderRadius: 10, padding: 10 }}
               >
                 <div
+                  className="files-head"
                   style={{
                     background: "#dcdcdc",
                     borderRadius: 8,
@@ -1045,12 +1093,13 @@ export default function TopicDetailPage() {
                 </div>
 
                 {files.length === 0 && (
-                  <div style={{ opacity: 0.85 }}>まだファイルがありません</div>
+                  <div className="cb-empty" style={{ opacity: 0.85 }}>まだファイルがありません</div>
                 )}
 
                 <div style={{ display: "grid", gap: 10 }}>
                   {files.map((f) => (
                     <div
+                      className="file-row"
                       key={f.id}
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
@@ -1074,6 +1123,7 @@ export default function TopicDetailPage() {
                         />
                         <div style={{ display: "grid", minWidth: 0 }}>
                           <div
+                            className="file-name"
                             style={{
                               fontWeight: 700,
                               fontSize: 13,
@@ -1084,7 +1134,7 @@ export default function TopicDetailPage() {
                           >
                             {f.file_name}
                           </div>
-                          <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          <div className="file-meta" style={{ fontSize: 12, opacity: 0.75 }}>
                             {displayName(f.created_by)}{" "}
                             {new Date(f.created_at)
                               .toISOString()
@@ -1103,6 +1153,7 @@ export default function TopicDetailPage() {
                       >
                         {me?.shortId === f.created_by && (
                           <button
+                            className="icon-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               openEditFileModal(f);
@@ -1128,6 +1179,7 @@ export default function TopicDetailPage() {
 
                         {!isUrlAdded(f) && (
                           <button
+                            className="icon-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               downloadFile(f.file_url, f.file_name);
@@ -1153,6 +1205,7 @@ export default function TopicDetailPage() {
 
                         {me?.shortId === f.created_by && (
                           <button
+                            className="icon-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteFile(f.id);
@@ -1216,7 +1269,7 @@ export default function TopicDetailPage() {
             />
 
             <div
-              className="drop-area"
+              className="drop-area" data-drag={dragOver}
               role="button"
               tabIndex={0}
               onClick={openFilePicker}
@@ -1256,6 +1309,25 @@ export default function TopicDetailPage() {
                 <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>
                   またはクリックしてファイルを選択
                 </div>
+                {uploadProgress !== null && (
+                  <>
+                    <div
+                      className="upload-progress"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={uploadProgress}
+                    >
+                      <div
+                        className="upload-progress-fill"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <div className="upload-progress-text">
+                      {uploadProgress}%
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </section>
@@ -1265,6 +1337,7 @@ export default function TopicDetailPage() {
       {/* ✅ コメント編集モーダル */}
       {showEditCommentModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -1278,6 +1351,7 @@ export default function TopicDetailPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               borderRadius: 12,
@@ -1289,6 +1363,7 @@ export default function TopicDetailPage() {
             <h3 style={{ margin: 0, marginBottom: 12 }}>コメントを編集</h3>
 
             <textarea
+              className="cb-textarea"
               value={editBody}
               onChange={(e) => setEditBody(e.target.value)}
               style={{
@@ -1304,12 +1379,13 @@ export default function TopicDetailPage() {
             />
 
             {editError && (
-              <div style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
+              <div className="cb-error" style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
                 {editError}
               </div>
             )}
 
             <div
+              className="cb-actions"
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
@@ -1318,12 +1394,14 @@ export default function TopicDetailPage() {
               }}
             >
               <button
+                className="cb-btn"
                 onClick={() => setShowEditCommentModal(false)}
                 disabled={editLoading}
               >
                 キャンセル
               </button>
               <button
+                className="cb-btn cb-btn-primary"
                 onClick={confirmEditComment}
                 disabled={editLoading}
                 style={{
@@ -1346,6 +1424,7 @@ export default function TopicDetailPage() {
       {/* ✅ ファイル名編集モーダル */}
       {showEditFileModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -1359,6 +1438,7 @@ export default function TopicDetailPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               borderRadius: 12,
@@ -1370,6 +1450,7 @@ export default function TopicDetailPage() {
             <h3 style={{ margin: 0, marginBottom: 12 }}>タイトルを編集</h3>
 
             <input
+              className="cb-input"
               value={editFileName}
               onChange={(e) => setEditFileName(e.target.value)}
               style={{
@@ -1385,12 +1466,13 @@ export default function TopicDetailPage() {
             />
 
             {editFileError && (
-              <div style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
+              <div className="cb-error" style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
                 {editFileError}
               </div>
             )}
 
             <div
+              className="cb-actions"
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
@@ -1399,12 +1481,14 @@ export default function TopicDetailPage() {
               }}
             >
               <button
+                className="cb-btn"
                 onClick={() => setShowEditFileModal(false)}
                 disabled={editFileLoading}
               >
                 キャンセル
               </button>
               <button
+                className="cb-btn cb-btn-primary"
                 onClick={confirmEditFileName}
                 disabled={editFileLoading}
                 style={{
@@ -1427,6 +1511,7 @@ export default function TopicDetailPage() {
       {/* URL追加モーダル */}
       {showUrlModal && (
         <div
+          className="cb-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -1440,6 +1525,7 @@ export default function TopicDetailPage() {
           }}
         >
           <div
+            className="cb-modal"
             style={{
               background: "#fff",
               borderRadius: 12,
@@ -1452,6 +1538,7 @@ export default function TopicDetailPage() {
 
             <div style={{ display: "grid", gap: 8 }}>
               <input
+                className="cb-input"
                 value={newFileName}
                 onChange={(e) => setNewFileName(e.target.value)}
                 placeholder="表示名（例: app01）"
@@ -1459,19 +1546,21 @@ export default function TopicDetailPage() {
                 disabled={fileBusy}
               />
               <input
+                className="cb-input"
                 value={newFileUrl}
                 onChange={(e) => setNewFileUrl(e.target.value)}
                 placeholder="URL（https://...）"
                 style={{ height: 40, padding: "0 10px" }}
                 disabled={fileBusy}
               />
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
+              <div className="cb-note" style={{ fontSize: 12, opacity: 0.75 }}>
                 ※ URL追加のリンク先が download.php ではない場合、
                 ダウンロード時に失敗します。
               </div>
             </div>
 
             <div
+              className="cb-actions"
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
@@ -1480,12 +1569,14 @@ export default function TopicDetailPage() {
               }}
             >
               <button
+                className="cb-btn"
                 onClick={() => setShowUrlModal(false)}
                 disabled={fileBusy}
               >
                 キャンセル
               </button>
               <button
+                className="cb-btn cb-btn-primary"
                 onClick={addFileByUrl}
                 disabled={fileBusy || !newFileName.trim() || !newFileUrl.trim()}
                 style={{
