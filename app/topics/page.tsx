@@ -569,7 +569,7 @@ export default function TopicsPage() {
           <BackButton className="backlink" fallbackHref="/login" />
           <img src="/images/topic-icon.svg" className="top-icon" alt="" />{" "}
           <span className="first-letter">T</span>opics
-          <ThemeSwitch />
+          <ThemeSwitch vertical />
         </div>
       </header>
 

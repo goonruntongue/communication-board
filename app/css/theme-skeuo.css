@@ -1198,9 +1198,79 @@ html[data-theme="skeuo"] .login-btn:active:not(:disabled) {
     transform: translateY(3px);
 }
 
+/* 2つのスイッチ（☾：ライト／ダーク、◐：テーマ）を並べる枠。標準は横並び */
+html[data-theme="skeuo"] .switches {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 縦並び（上：ライト／ダーク、下：テーマ） */
+html[data-theme="skeuo"] .switches.vertical {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+html[data-theme="skeuo"] .header-inner .switches {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+}
+
+/* 縦並びは見出しの段より背が高いので、下端をそろえて上の段（通知ボタンの横）へ伸ばす */
+html[data-theme="skeuo"] .header-inner .switches.vertical {
+    top: auto;
+    bottom: -4px;
+    transform: none;
+}
+
+html[data-theme="skeuo"] .login-page-main .switches {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+}
+
+html[data-theme="skeuo"] .header-inner .switches .theme-switch,
+html[data-theme="skeuo"] .login-page-main .switches .theme-switch {
+    position: static;
+    transform: none;
+}
+
+html[data-theme="skeuo"] .switches .theme-switch {
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-size: 12px;
+}
+
+/* 印（☾ と ◐）は字の幅が違うので、同じ幅の枠に入れて2つのスイッチの横幅をそろえる */
+html[data-theme="skeuo"] .theme-switch > span:first-child {
+    display: inline-block;
+    width: 14px;
+    text-align: center;
+}
+
+html[data-theme="skeuo"] .switches .theme-switch-track {
+    width: 30px;
+    height: 16px;
+}
+
+html[data-theme="skeuo"] .switches .theme-switch-knob {
+    width: 12px;
+    height: 12px;
+}
+
 /* ---------- スマホ ---------- */
 
 @media (max-width: 600px) {
+    /* 狭い画面では、横並びのスイッチが見出しに当たるので縦に積む */
+    html[data-theme="skeuo"] .header-inner .switches:not(.vertical) {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+    }
+
     html[data-theme="skeuo"] header {
         font-size: 17px !important;
     }
@@ -1239,4 +1309,256 @@ html[data-theme="skeuo"] .login-btn:active:not(:disabled) {
         animation: none !important;
         transition: none !important;
     }
+}
+
+/* ============================================================
+ * ダークモード（html に data-mode="dark" が付いているとき）
+ * 紙の白を暗いグレーに置き換え、光と影を暗い面に合わせて付け直す。
+ * ============================================================ */
+
+html[data-mode="dark"][data-theme="skeuo"] {
+    --mute: #a8a8a8;
+    --raised: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 0 #0a0a0a, 0 3px 0 #050505, 0 6px 12px rgba(0, 0, 0, 0.5);
+    --pressed: inset 0 2px 5px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.08);
+    --well: inset 0 2px 5px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.08);
+    --card: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] body {
+    background: #222;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] main {
+    background:
+        var(--grain),
+        radial-gradient(1200px 500px at 50% -120px, #3c3c3c, rgba(60, 60, 60, 0) 70%),
+        linear-gradient(#2c2c2c, #212121) !important;
+}
+
+/* 文字は明るく。ライムイエローの上に載る文字だけは黒のまま */
+html[data-mode="dark"][data-theme="skeuo"] body,
+html[data-mode="dark"][data-theme="skeuo"] .cb-chip,
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn,
+html[data-mode="dark"][data-theme="skeuo"] .cb-input,
+html[data-mode="dark"][data-theme="skeuo"] .cb-textarea,
+html[data-mode="dark"][data-theme="skeuo"] .drop-area,
+html[data-mode="dark"][data-theme="skeuo"] .cb-loading,
+html[data-mode="dark"][data-theme="skeuo"] .login-btn {
+    color: #efefef !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-chip[data-active="true"]:not(.cb-chip-dark),
+html[data-mode="dark"][data-theme="skeuo"] .cat-title,
+html[data-mode="dark"][data-theme="skeuo"] .cb-tag,
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic:hover,
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-primary,
+html[data-mode="dark"][data-theme="skeuo"] .drop-area[data-drag="true"] {
+    color: var(--ink) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-empty,
+html[data-mode="dark"][data-theme="skeuo"] .cb-note {
+    color: #a8a8a8 !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-error {
+    color: #ff7b72 !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-modal-text {
+    color: #cfcfcf;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .comment-time {
+    color: #a0a0a0;
+}
+
+/* 黒で描かれたアイコンは白に、白で描かれたアイコンはそのままにする */
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic .door,
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic .edit-btn img,
+html[data-mode="dark"][data-theme="skeuo"] .board img[alt="edit"],
+html[data-mode="dark"][data-theme="skeuo"] .comment-head > img {
+    filter: invert(1);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .icon-invert,
+html[data-mode="dark"][data-theme="skeuo"] .board img[alt="delete"] {
+    filter: none;
+}
+
+/* ライムイエローに変わった行の上では、アイコンを黒に戻す */
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic:hover .door,
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic:hover .edit-btn img {
+    filter: none;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic:hover .icon-invert {
+    filter: invert(1);
+}
+
+/* 主ボタンは、暗い背景でも目立つようライムイエローにする */
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-primary {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-danger {
+    background: linear-gradient(145deg, #ff857c, var(--red) 50%, #d5271d) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-panel,
+html[data-mode="dark"][data-theme="skeuo"] .login-card {
+    border-color: #111;
+    background: linear-gradient(#3b3b3b, #303030) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-chip,
+html[data-mode="dark"][data-theme="skeuo"] .cb-round,
+html[data-mode="dark"][data-theme="skeuo"] .chip-x {
+    border-color: #111 !important;
+    background: linear-gradient(#4c4c4c, #353535) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 0 #0a0a0a, 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-chip,
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn,
+html[data-mode="dark"][data-theme="skeuo"] .login-btn,
+html[data-mode="dark"][data-theme="skeuo"] .cb-modal h3,
+html[data-mode="dark"][data-theme="skeuo"] .busy-label,
+html[data-mode="dark"][data-theme="skeuo"] .drop-area {
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-chip[data-active="true"] {
+    border-color: var(--lime-edge) !important;
+    background: linear-gradient(var(--lime-lo), var(--lime) 60%, var(--lime-hi)) !important;
+    box-shadow: inset 0 2px 4px rgba(60, 80, 0, 0.45), 0 0 10px rgba(217, 255, 63, 0.55);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-chip-dark[data-active="true"] {
+    border-color: #000 !important;
+    background: linear-gradient(#0a0a0a, #1c1c1c) !important;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-input,
+html[data-mode="dark"][data-theme="skeuo"] .cb-textarea {
+    border-color: #0d0d0d !important;
+    background: linear-gradient(#1b1b1b, #272727 26px) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn,
+html[data-mode="dark"][data-theme="skeuo"] .login-btn {
+    border-color: #0d0d0d !important;
+    background: linear-gradient(#4e4e4e, #343434) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-primary {
+    border-color: var(--lime-edge) !important;
+    background: linear-gradient(var(--lime-hi), var(--lime) 50%, var(--lime-lo)) !important;
+    box-shadow: var(--raised-lime);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-primary:active:not(:disabled) {
+    box-shadow: inset 0 3px 6px rgba(60, 80, 0, 0.55);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-btn-danger {
+    border-color: #a51d15 !important;
+    background: linear-gradient(#ff7a70, var(--red) 50%, #d9281e) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .icon-btn:hover,
+html[data-mode="dark"][data-theme="skeuo"] .board .icon-btn:hover {
+    background: linear-gradient(#4e4e4e, #343434) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 0 #0a0a0a, 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-modal,
+html[data-mode="dark"][data-theme="skeuo"] .busy-card {
+    border-color: #111;
+    background: linear-gradient(#3b3b3b, #2e2e2e) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-modal h3 {
+    border-bottom-color: #161616;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .goto-topic {
+    border-bottom-color: #181818;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-fab {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 0 0 4px #3a3a3a,
+        0 0 0 5px #0e0e0e,
+        0 4px 0 5px #070707,
+        0 14px 22px rgba(0, 0, 0, 0.6);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-fab:active {
+    box-shadow:
+        inset 0 3px 8px rgba(0, 0, 0, 0.8),
+        0 0 0 4px #3a3a3a,
+        0 0 0 5px #0e0e0e,
+        0 1px 0 5px #070707,
+        0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .header-title-pill div {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .cb-dark-panel {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 30px rgba(0, 0, 0, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .board {
+    background: linear-gradient(#141414, #1e1e1e 40px) !important;
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .comment {
+    border-bottom-color: #0f0f0f !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .composer .cb-textarea {
+    box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .drop-area {
+    border-color: #5a5a5a !important;
+    background: linear-gradient(#1c1c1c, #272727) !important;
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .drop-area:hover {
+    border-color: #8a8a8a !important;
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .drop-area[data-drag="true"] {
+    border-color: var(--lime-edge) !important;
+    background: linear-gradient(var(--lime), var(--lime-hi)) !important;
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .upload-progress {
+    border-color: #000;
+    background: linear-gradient(#141414, #2a2a2a);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.75), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .login-title {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 0 rgba(255, 255, 255, 0.07), 0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+html[data-mode="dark"][data-theme="skeuo"] .comment:last-child {
+    box-shadow: none;
 }

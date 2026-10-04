@@ -5,12 +5,14 @@ import "./css/theme-soft.css";
 import "./css/theme-skeuo.css";
 import RegisterSW from "@/components/RegisterSW";
 import NavProgress from "@/components/NavProgress";
-import { THEME_STORAGE_KEY } from "@/lib/theme";
+import { MODE_STORAGE_KEY, THEME_STORAGE_KEY } from "@/lib/theme";
 
-// 前回選んだテーマを、画面が描かれる前に反映する（描いてから切り替えると一瞬ちらつくため）
-const THEME_BOOT_SCRIPT = `try{if(localStorage.getItem(${JSON.stringify(
+// 前回選んだテーマとライト／ダークを、画面が描かれる前に反映する（描いてから切り替えると一瞬ちらつくため）
+const THEME_BOOT_SCRIPT = `try{var d=document.documentElement.dataset;if(localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
-)})==="skeuo")document.documentElement.dataset.theme="skeuo"}catch(e){}`;
+)})==="skeuo")d.theme="skeuo";if(localStorage.getItem(${JSON.stringify(
+  MODE_STORAGE_KEY,
+)})==="dark")d.mode="dark"}catch(e){}`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
